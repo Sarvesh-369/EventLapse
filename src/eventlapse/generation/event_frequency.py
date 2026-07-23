@@ -50,28 +50,42 @@ class EventFrequencyScene(Scene):
 
         time_tracker = ValueTracker(0)
 
-        def update_left(m):
+        def update_rod_left(m):
             t = time_tracker.get_value()
             angle = amplitude * math.sin(2 * math.pi * f_left * t + initial_phase_left)
             end_pos = pivot_left + np.array([arm_len * math.sin(angle), -arm_len * math.cos(angle), 0])
-            rod_left.put_start_and_end_on(pivot_left, end_pos)
-            bob_left.move_to(end_pos)
+            m.put_start_and_end_on(pivot_left, end_pos)
 
-        def update_right(m):
+        def update_bob_left(m):
+            t = time_tracker.get_value()
+            angle = amplitude * math.sin(2 * math.pi * f_left * t + initial_phase_left)
+            end_pos = pivot_left + np.array([arm_len * math.sin(angle), -arm_len * math.cos(angle), 0])
+            m.move_to(end_pos)
+
+        def update_rod_right(m):
             t = time_tracker.get_value()
             angle = amplitude * math.sin(2 * math.pi * f_right * t + initial_phase_right)
             end_pos = pivot_right + np.array([arm_len * math.sin(angle), -arm_len * math.cos(angle), 0])
-            rod_right.put_start_and_end_on(pivot_right, end_pos)
-            bob_right.move_to(end_pos)
+            m.put_start_and_end_on(pivot_right, end_pos)
 
-        bob_left.add_updater(update_left)
-        bob_right.add_updater(update_right)
+        def update_bob_right(m):
+            t = time_tracker.get_value()
+            angle = amplitude * math.sin(2 * math.pi * f_right * t + initial_phase_right)
+            end_pos = pivot_right + np.array([arm_len * math.sin(angle), -arm_len * math.cos(angle), 0])
+            m.move_to(end_pos)
+
+        rod_left.add_updater(update_rod_left)
+        bob_left.add_updater(update_bob_left)
+        rod_right.add_updater(update_rod_right)
+        bob_right.add_updater(update_bob_right)
 
         self.play(time_tracker.animate.set_value(self.clip_duration), run_time=self.clip_duration, rate_func=linear)
         self.wait(0.2)
 
-        bob_left.remove_updater(update_left)
-        bob_right.remove_updater(update_right)
+        rod_left.remove_updater(update_rod_left)
+        bob_left.remove_updater(update_bob_left)
+        rod_right.remove_updater(update_rod_right)
+        bob_right.remove_updater(update_bob_right)
 
         for side, f in [("left", f_left), ("right", f_right)]:
             period = 1.0 / f
@@ -174,7 +188,7 @@ class EventFrequencyGenerator(BaseTaskGenerator):
             "seed": seed
         }
 
-        dest_video, dest_trace, dest_cot, dest_gt = save_sample_outputs(
+        dest_video, dest_question, dest_trace, dest_cot, dest_gt = save_sample_outputs(
             sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)

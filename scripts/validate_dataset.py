@@ -45,6 +45,10 @@ def main(data_dir: str):
             elif video_path.stat().st_size == 0:
                 errors.append(f"Sample '{sid}': Empty video file {video_path}")
 
+            question_file = base_dir / "questions" / item.get("task_name", "") / f"{sid}.txt"
+            if not question_file.exists():
+                errors.append(f"Sample '{sid}': Missing question file {question_file}")
+
             trace_file = base_dir / "traces" / item.get("task_name", "") / f"{sid}_trace.json"
             if not trace_file.exists():
                 errors.append(f"Sample '{sid}': Missing trace file {trace_file}")

@@ -25,6 +25,8 @@ def get_outputs_dir() -> Path:
 def ensure_directories():
     data_dir = get_data_dir()
     (data_dir / "videos").mkdir(parents=True, exist_ok=True)
+    (data_dir / "questions").mkdir(parents=True, exist_ok=True)
     (data_dir / "traces").mkdir(parents=True, exist_ok=True)
+    (data_dir / "reasoning_traces").mkdir(parents=True, exist_ok=True)
     (data_dir / "gt").mkdir(parents=True, exist_ok=True)
     get_outputs_dir().mkdir(parents=True, exist_ok=True)

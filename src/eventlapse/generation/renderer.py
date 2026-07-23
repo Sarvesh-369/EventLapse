@@ -65,24 +65,30 @@ def save_sample_outputs(
     cot_text: str,
     gt_data: Dict[str, Any],
     base_output_dir: Path
-) -> Tuple[Path, Path, Path, Path]:
+) -> Tuple[Path, Path, Path, Path, Path]:
     videos_dir = base_output_dir / "videos" / task_name
+    questions_dir = base_output_dir / "questions" / task_name
     traces_dir = base_output_dir / "traces" / task_name
     reasoning_dir = base_output_dir / "reasoning_traces" / task_name
     gt_dir = base_output_dir / "gt" / task_name
 
     videos_dir.mkdir(parents=True, exist_ok=True)
+    questions_dir.mkdir(parents=True, exist_ok=True)
     traces_dir.mkdir(parents=True, exist_ok=True)
     reasoning_dir.mkdir(parents=True, exist_ok=True)
     gt_dir.mkdir(parents=True, exist_ok=True)
 
     dest_video_path = videos_dir / f"{sample_id}.mp4"
+    dest_question_path = questions_dir / f"{sample_id}.txt"
     dest_trace_path = traces_dir / f"{sample_id}_trace.json"
     dest_cot_path = reasoning_dir / f"{sample_id}.txt"
     dest_gt_path = gt_dir / f"{sample_id}_gt.json"
 
     if rendered_mp4_path.exists():
         shutil.copy(str(rendered_mp4_path), str(dest_video_path))
+
+    with open(dest_question_path, "w") as f:
+        f.write(gt_data.get("question", ""))
 
     with open(dest_trace_path, "w") as f:
         json.dump(trace_data, f, indent=2)
@@ -93,4 +99,4 @@ def save_sample_outputs(
     with open(dest_gt_path, "w") as f:
         json.dump(gt_data, f, indent=2)
 
-    return dest_video_path, dest_trace_path, dest_cot_path, dest_gt_path
+    return dest_video_path, dest_question_path, dest_trace_path, dest_cot_path, dest_gt_path

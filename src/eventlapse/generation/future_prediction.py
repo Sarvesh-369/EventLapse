@@ -176,7 +176,7 @@ class FuturePredictionGenerator(BaseTaskGenerator):
             "seed": seed
         }
 
-        dest_video, dest_trace, dest_cot, dest_gt = save_sample_outputs(
+        dest_video, dest_question, dest_trace, dest_cot, dest_gt = save_sample_outputs(
             sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
