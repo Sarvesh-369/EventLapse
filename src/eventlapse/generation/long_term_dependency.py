@@ -1,4 +1,5 @@
 import random
+import hashlib
 import shutil
 from pathlib import Path
 from typing import Dict, Any, List
@@ -82,12 +83,15 @@ class LongTermDependencyScene(Scene):
                 "positions": list(parcel_positions)
             })
 
-        should_marked_enter = (self.seed % 2 == 0)
+        # Ensure 50% positive (marked parcel 0) and 50% negative (unmarked parcel 1 or 2)
+        # across control parameter values D even for a single seed (like seed 0).
+        sample_hash = int(hashlib.md5(f"{self.seed}_{self.D}".encode()).hexdigest(), 16)
+        should_marked_enter = (sample_hash % 2 == 0)
 
         if should_marked_enter:
             entering_parcel_idx = 0
         else:
-            entering_parcel_idx = 1 if (self.seed // 2) % 2 == 0 else 2
+            entering_parcel_idx = 1 if (sample_hash // 2) % 2 == 0 else 2
 
         self.final_parcel_in_bin_id = entering_parcel_idx
         self.entered_delivery_bin = (entering_parcel_idx == self.marked_parcel_id)
