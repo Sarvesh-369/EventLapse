@@ -10,22 +10,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from eventlapse.utils.paths import get_data_dir, ensure_directories
 from eventlapse.utils.logging import logger
 
-from eventlapse.generation.event_counting import EventCountingGenerator
-from eventlapse.generation.event_frequency import EventFrequencyGenerator
-from eventlapse.generation.temporal_ordering import TemporalOrderingGenerator
-from eventlapse.generation.duration_comparison import DurationComparisonGenerator
-from eventlapse.generation.causal_attribution import CausalAttributionGenerator
-from eventlapse.generation.future_prediction import FuturePredictionGenerator
-from eventlapse.generation.long_term_dependency import LongTermDependencyGenerator
+from eventlapse.generation.bounce_ball import BounceBallGenerator
+from eventlapse.generation.blinking import BlinkingGenerator
+from eventlapse.generation.state_machine import StateMachineGenerator
 
 TASK_GENERATOR_MAP = {
-    "event_counting": (EventCountingGenerator(), [1, 2, 3, 4, 6, 8, 10, 12, 16]),
-    "event_frequency": (EventFrequencyGenerator(), [0.5, 1.0, 1.5, 2.0, 3.0, 4.0]),
-    "temporal_ordering": (TemporalOrderingGenerator(), [3, 4, 6, 8, 10, 12, 16]),
-    "duration_comparison": (DurationComparisonGenerator(), [1.05, 1.10, 1.25, 1.50, 2.00, 3.00]),
-    "causal_attribution": (CausalAttributionGenerator(), [1, 2, 3, 4, 5, 6]),
-    "future_prediction": (FuturePredictionGenerator(), [1, 2, 3, 4, 5]),
-    "long_term_dependency": (LongTermDependencyGenerator(), [0, 2, 4, 8, 12, 16]),
+    "bounce_ball": (BounceBallGenerator(), [2, 4, 8, 12]),
+    "blinking": (BlinkingGenerator(), [2, 4, 8, 12]),
+    "state_machine": (StateMachineGenerator(), [2, 4, 8, 12]),
 }
 
 @click.command()
@@ -36,7 +28,7 @@ TASK_GENERATOR_MAP = {
 @click.option("--output-dir", default=None, help="Output dataset directory")
 def main(num_seeds: int, seed_start: int, seed_end: int, tasks: str, output_dir: str):
     """
-    Generate synthetic task videos, traces, and ground-truth metadata in data/.
+    Generate synthetic task videos, executable traces JSON, ground-truth metadata, and questions.
     """
     ensure_directories()
     data_dir = Path(output_dir) if output_dir else get_data_dir()
@@ -56,7 +48,7 @@ def main(num_seeds: int, seed_start: int, seed_end: int, tasks: str, output_dir:
             continue
 
         generator, control_values = TASK_GENERATOR_MAP[task_key]
-        logger.info(f"Generating task '{task_key}' across values {control_values} for seeds {seeds}...")
+        logger.info(f"Generating task '{task_key}' across counts {control_values} for seeds {seeds}...")
 
         for val in control_values:
             for s in seeds:

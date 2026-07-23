@@ -15,7 +15,7 @@ from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
 FIXED_TASK_DURATION = 20.0
 
-class EventCountingScene(Scene):
+class BounceBallScene(Scene):
     def __init__(self, N: int, seed: int, **kwargs):
         super().__init__(**kwargs)
         self.N = int(N)
@@ -25,7 +25,7 @@ class EventCountingScene(Scene):
 
     def construct(self):
         set_seed(self.seed)
-        sample_hash = int(hashlib.md5(f"eventlapse_counting_{self.seed}_{self.N}".encode()).hexdigest(), 16)
+        sample_hash = int(hashlib.md5(f"eventlapse_bounce_{self.seed}_{self.N}".encode()).hexdigest(), 16)
         rng = random.Random(sample_hash)
 
         colors = get_nuisance_colors(self.seed, 3)
@@ -43,7 +43,6 @@ class EventCountingScene(Scene):
         wall1 = Rectangle(width=0.2, height=3.0, color=wall_color, fill_opacity=1).move_to(-u * wall_dist).rotate(rotation_angle)
         wall2 = Rectangle(width=0.2, height=3.0, color=wall_color, fill_opacity=1).move_to(u * wall_dist).rotate(rotation_angle)
 
-        # Pick random interior start position away from both walls
         start_offset = rng.uniform(-0.5 * wall_dist, 0.5 * wall_dist)
         initial_target_positive = rng.choice([True, False])
 
@@ -53,7 +52,6 @@ class EventCountingScene(Scene):
         self.wait(0.2)
         current_time = 0.2
 
-        # Initial move from interior start position to first wall
         first_target = (u if initial_target_positive else -u) * (wall_dist - ball_radius - 0.1)
         dist_first = abs(np.linalg.norm(first_target - (u * start_offset)))
 
@@ -62,15 +60,11 @@ class EventCountingScene(Scene):
         current_time += first_leg_duration
 
         wall_id = "wall_positive" if initial_target_positive else "wall_negative"
-        dir_before = "forward" if initial_target_positive else "backward"
-        dir_after = "backward" if initial_target_positive else "forward"
 
         self.contact_events.append({
             "contact_index": 1,
             "timestamp": round(current_time, 2),
             "wall_identity": wall_id,
-            "direction_before": dir_before,
-            "direction_after": dir_after,
             "running_count": 1
         })
 
@@ -84,21 +78,16 @@ class EventCountingScene(Scene):
             current_time += one_way_duration
 
             wall_id = "wall_positive" if current_target_positive else "wall_negative"
-            dir_before = "forward" if current_target_positive else "backward"
-            dir_after = "backward" if current_target_positive else "forward"
 
             self.contact_events.append({
                 "contact_index": i + 1,
                 "timestamp": round(current_time, 2),
                 "wall_identity": wall_id,
-                "direction_before": dir_before,
-                "direction_after": dir_after,
                 "running_count": i + 1
             })
 
             current_target_positive = not current_target_positive
 
-        # Final move after bounce N: return to interior space away from walls
         end_offset = rng.uniform(-0.5 * wall_dist, 0.5 * wall_dist)
         end_target = u * end_offset
         last_wall_val = (u if not current_target_positive else -u) * (wall_dist - ball_radius - 0.1)
@@ -108,13 +97,11 @@ class EventCountingScene(Scene):
         self.play(ball.animate.move_to(end_target), run_time=final_leg_duration)
         current_time += final_leg_duration
 
-        # Calculate remaining wait time to enforce FIXED_TASK_DURATION (20.0s)
         question_duration = 3.7
         remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time - question_duration)
         self.wait(remaining_wait)
         current_time += remaining_wait
 
-        # Render question text overlay at the end of the video
         render_question_card(
             self,
             question="How many times did the ball contact the walls?",
@@ -123,10 +110,10 @@ class EventCountingScene(Scene):
         current_time += question_duration
         self.actual_duration = round(current_time, 2)
 
-class EventCountingGenerator(BaseTaskGenerator):
+class BounceBallGenerator(BaseTaskGenerator):
     @property
     def task_name(self) -> str:
-        return "event_counting"
+        return "bounce_ball"
 
     @property
     def control_parameter_name(self) -> str:
@@ -141,10 +128,10 @@ class EventCountingGenerator(BaseTaskGenerator):
         fps: int = 30
     ) -> SyntheticSample:
         N = int(control_value)
-        sample_id = f"counting_N{N}_seed{seed}"
+        sample_id = f"bounce_N{N}_seed{seed}"
 
         rendered_file, scene, temp_dir = render_manim_scene(
-            EventCountingScene,
+            BounceBallScene,
             output_filename=sample_id,
             resolution=resolution,
             fps=fps,
@@ -173,27 +160,15 @@ class EventCountingGenerator(BaseTaskGenerator):
             "Let's analyze the video step by step.",
             "",
             "### Scene Description",
-            "The following events occurred in the video:"
+            "Ball bouncing between two walls."
         ]
-        if scene.contact_events:
-            for e in scene.contact_events:
-                cot_lines.append(f"- At {e['timestamp']:.2f}s: Ball contacted {e['wall_identity']} (count={e['running_count']})")
-        else:
-            cot_lines.append("- No wall contact events occurred.")
+        for e in scene.contact_events:
+            cot_lines.append(f"- At {e['timestamp']:.2f}s: Ball contacted {e['wall_identity']} (count={e['running_count']})")
 
         cot_lines.extend([
             "",
-            "### Step 1: Understand the Goal",
-            "We need to count the total number of times the ball contacts the walls.",
-            "",
-            "### Step 2: Analyze Contact Events",
-            f"Scanning event log: {len(scene.contact_events)} wall contact events detected.",
-            "",
-            "### Step 3: Derive the Answer",
-            f"Total counted contact events: {N}",
-            "",
-            "### Step 4: Verification",
-            f"Event schedule analysis confirmed {N} contacts. Matches.",
+            "### Step 1: Track Contact Events",
+            f"Total wall contact events detected: {N}.",
             "",
             f"\\boxed{{{N}}}"
         ])
