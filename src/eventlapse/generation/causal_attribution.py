@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from manim import Scene, Circle, Square, Rectangle, RIGHT, LEFT, UP, DOWN, GREY, YELLOW
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
-from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs
+from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
 from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
@@ -108,6 +108,13 @@ class CausalAttributionScene(Scene):
 
         self.wait(0.5)
 
+        # Render question text overlay at the end of the video
+        render_question_card(
+            self,
+            question="Which colored object caused the lamp to turn on?",
+            format_instruction="Answer with the color name (e.g. red)."
+        )
+
 class CausalAttributionGenerator(BaseTaskGenerator):
     @property
     def task_name(self) -> str:
@@ -168,7 +175,7 @@ class CausalAttributionGenerator(BaseTaskGenerator):
             sample_id, self.task_name, rendered_file, trace_data, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
-        duration = round(1.0 + 3 * (0.6 + C * 0.4), 2)
+        duration = round(1.0 + 3 * (0.6 + C * 0.4) + 3.7, 2)
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 

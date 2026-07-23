@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from manim import Scene, Square, LEFT, RIGHT, UP, DOWN
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
-from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs
+from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
 from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
@@ -87,6 +87,13 @@ class FuturePredictionScene(Scene):
 
         self.wait(0.2)
 
+        # Render question text overlay at the end of the video
+        render_question_card(
+            self,
+            question=f"Which colored square will flash {self.h} steps after the video ends?",
+            format_instruction="Answer with the color name (e.g. red)."
+        )
+
 class FuturePredictionGenerator(BaseTaskGenerator):
     @property
     def task_name(self) -> str:
@@ -148,7 +155,7 @@ class FuturePredictionGenerator(BaseTaskGenerator):
             sample_id, self.task_name, rendered_file, trace_data, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
-        duration = round(0.5 + 8 * 0.7 + 0.2, 2)
+        duration = round(0.5 + 8 * 0.7 + 3.9, 2)
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 

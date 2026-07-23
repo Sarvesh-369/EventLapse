@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from manim import Scene, Circle, Square, Rectangle, LEFT, RIGHT, UP, DOWN
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
-from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs
+from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
 from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
@@ -77,6 +77,13 @@ class DurationComparisonScene(Scene):
 
         self.wait(0.5)
 
+        # Render question text overlay at the end of the video
+        render_question_card(
+            self,
+            question="Which object remained stopped longer?",
+            format_instruction="Answer with 'top object' or 'bottom object'."
+        )
+
 class DurationComparisonGenerator(BaseTaskGenerator):
     @property
     def task_name(self) -> str:
@@ -136,7 +143,7 @@ class DurationComparisonGenerator(BaseTaskGenerator):
             sample_id, self.task_name, rendered_file, trace_data, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
-        duration = round(3.5 + 2.0 * r, 2)
+        duration = round(3.5 + 2.0 * r + 3.7, 2)
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 

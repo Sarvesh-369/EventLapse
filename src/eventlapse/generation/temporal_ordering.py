@@ -6,7 +6,7 @@ from typing import Dict, Any, List
 from manim import Scene, Line, Circle, LEFT, RIGHT, UP, DOWN, WHITE
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
-from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs
+from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
 from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
@@ -68,6 +68,13 @@ class TemporalOrderingScene(Scene):
 
         self.wait(0.5)
 
+        # Render question text overlay at the end of the video
+        render_question_card(
+            self,
+            question=f"Which object crossed the finish line in position {self.queried_k}?",
+            format_instruction="Answer with the color name (e.g. red)."
+        )
+
 class TemporalOrderingGenerator(BaseTaskGenerator):
     @property
     def task_name(self) -> str:
@@ -128,7 +135,7 @@ class TemporalOrderingGenerator(BaseTaskGenerator):
             sample_id, self.task_name, rendered_file, trace_data, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
-        duration = round(0.5 + L * 1.2, 2)
+        duration = round(0.5 + L * 1.2 + 3.7, 2)
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 

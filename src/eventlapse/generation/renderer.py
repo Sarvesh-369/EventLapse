@@ -3,9 +3,31 @@ import json
 import tempfile
 from pathlib import Path
 from typing import Dict, Any, Tuple, Type
-from manim import config, Scene
+from manim import config, Scene, Text, Write, UP
 
 from eventlapse.utils.caching import compute_file_checksum
+
+def render_question_card(scene: Scene, question: str, format_instruction: str = ""):
+    """
+    Renders the question text on screen at the end of the video clip (similar to MORSE benchmark).
+    """
+    scene.clear()
+    scene.wait(0.2)
+    lines = [question]
+    if format_instruction:
+        lines.extend(["", format_instruction])
+
+    question_texts = []
+    start_y = 1.2
+    line_height = 0.8
+    for i, line in enumerate(lines):
+        if line:
+            t = Text(line, font_size=28 if i == 0 else 22)
+            t.move_to(UP * (start_y - i * line_height))
+            question_texts.append(t)
+
+    scene.play(*[Write(t) for t in question_texts], run_time=1.0)
+    scene.wait(2.5)
 
 def render_manim_scene(
     scene_class: Type[Scene],

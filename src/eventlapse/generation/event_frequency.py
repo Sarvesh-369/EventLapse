@@ -7,7 +7,7 @@ from typing import Dict, Any, List
 from manim import Scene, Line, Circle, LEFT, RIGHT, UP, DOWN, ValueTracker, linear
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
-from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs
+from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
 from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
@@ -43,8 +43,8 @@ class EventFrequencyScene(Scene):
         bob_left = Circle(radius=0.3, color=left_color, fill_opacity=1)
         bob_right = Circle(radius=0.3, color=right_color, fill_opacity=1)
 
-        rod_left = Line(pivot_left, pivot_left + DOWN * arm_len, color=left_color)
-        rod_right = Line(pivot_right, pivot_right + DOWN * arm_len, color=right_color)
+        rod_left = Line(pivot_left, pivot_left + DOWN * arm_len, color=left_color, stroke_width=4)
+        rod_right = Line(pivot_right, pivot_right + DOWN * arm_len, color=right_color, stroke_width=4)
 
         self.add(rod_left, rod_right, bob_left, bob_right)
 
@@ -54,14 +54,14 @@ class EventFrequencyScene(Scene):
             t = time_tracker.get_value()
             angle = amplitude * math.sin(2 * math.pi * f_left * t + initial_phase_left)
             end_pos = pivot_left + np.array([arm_len * math.sin(angle), -arm_len * math.cos(angle), 0])
-            rod_left.set_points_as_corners([pivot_left, end_pos])
+            rod_left.put_start_and_end_on(pivot_left, end_pos)
             bob_left.move_to(end_pos)
 
         def update_right(m):
             t = time_tracker.get_value()
             angle = amplitude * math.sin(2 * math.pi * f_right * t + initial_phase_right)
             end_pos = pivot_right + np.array([arm_len * math.sin(angle), -arm_len * math.cos(angle), 0])
-            rod_right.set_points_as_corners([pivot_right, end_pos])
+            rod_right.put_start_and_end_on(pivot_right, end_pos)
             bob_right.move_to(end_pos)
 
         bob_left.add_updater(update_left)
@@ -69,6 +69,9 @@ class EventFrequencyScene(Scene):
 
         self.play(time_tracker.animate.set_value(self.clip_duration), run_time=self.clip_duration, rate_func=linear)
         self.wait(0.2)
+
+        bob_left.remove_updater(update_left)
+        bob_right.remove_updater(update_right)
 
         for side, f in [("left", f_left), ("right", f_right)]:
             period = 1.0 / f
@@ -82,6 +85,13 @@ class EventFrequencyScene(Scene):
                         "completed_cycle": c + 1,
                         "timestamp": t_cycle
                     })
+
+        # Render question text overlay at the end of the video
+        render_question_card(
+            self,
+            question="Which pendulum oscillated faster?",
+            format_instruction="Answer with 'left' or 'right'."
+        )
 
 class EventFrequencyGenerator(BaseTaskGenerator):
     @property
@@ -157,7 +167,7 @@ class EventFrequencyGenerator(BaseTaskGenerator):
             exact_answer=exact_answer,
             executable_trace=trace_data,
             generation_config={"resolution": resolution, "fps": fps},
-            duration=duration + 0.2,
+            duration=duration + 3.9,
             fps=fps,
             resolution=resolution,
             checksum=checksum

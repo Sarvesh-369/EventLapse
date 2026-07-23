@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from manim import Scene, Circle, Rectangle, Star, RIGHT, UP, DOWN, YELLOW, GREEN
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
-from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs
+from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
 from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
@@ -32,7 +32,7 @@ class LongTermDependencyScene(Scene):
         y_pos = 1.0
 
         parcels = []
-        parcel_positions = [0, 1, 2]
+        parcel_positions = [0, 1, 2] # current slot index for parcel 0, 1, 2
 
         for i in range(3):
             c_hex = colors[i]
@@ -41,12 +41,14 @@ class LongTermDependencyScene(Scene):
             parcels.append({"id": i, "color_name": c_name, "hex": c_hex, "shape": shape})
             self.add(shape)
 
+        # Mark parcel 0 with a yellow star
         marker = Star(n=5, outer_radius=0.2, color=YELLOW, fill_opacity=1).move_to(parcels[0]["shape"].get_center() + UP * 0.6)
         self.add(marker)
 
         self.play(marker.animate.scale(1.2), run_time=0.3)
         self.play(marker.animate.scale(1/1.2), run_time=0.3)
 
+        # Delivery bin at bottom right
         bin_box = Rectangle(width=1.8, height=1.5, color=GREEN, fill_opacity=0.3).move_to(RIGHT * 3.0 + DOWN * 2.0)
         self.add(bin_box)
 
@@ -82,23 +84,33 @@ class LongTermDependencyScene(Scene):
                 "positions": list(parcel_positions)
             })
 
+        # 50% positive cases: marked parcel (0) enters bin
+        # 50% negative cases: unmarked parcel (1 or 2) enters bin
         should_marked_enter = (self.seed % 2 == 0)
 
         if should_marked_enter:
-            winning_parcel_id = 0
+            entering_parcel_idx = 0
         else:
-            winning_parcel_id = 1 if parcel_positions[0] != parcel_positions[1] else 2
+            # Deterministically select parcel 1 or 2
+            entering_parcel_idx = 1 if (self.seed // 2) % 2 == 0 else 2
 
-        self.final_parcel_in_bin_id = winning_parcel_id
-        self.entered_delivery_bin = (winning_parcel_id == self.marked_parcel_id)
+        self.final_parcel_in_bin_id = entering_parcel_idx
+        self.entered_delivery_bin = (entering_parcel_idx == self.marked_parcel_id)
 
-        winning_shape = parcels[winning_parcel_id]["shape"]
+        winning_shape = parcels[entering_parcel_idx]["shape"]
         self.play(winning_shape.animate.move_to(RIGHT * 3.0 + DOWN * 2.0), run_time=0.8)
-        if winning_parcel_id == 0:
+        if entering_parcel_idx == 0:
             self.play(marker.animate.move_to(RIGHT * 3.0 + DOWN * 1.4), run_time=0.8)
 
         current_time += 0.8
         self.wait(0.5)
+
+        # Render question text overlay at the end of the video
+        render_question_card(
+            self,
+            question="Did the parcel marked at the beginning enter the delivery bin?",
+            format_instruction="Answer with 'yes' or 'no'."
+        )
 
 class LongTermDependencyGenerator(BaseTaskGenerator):
     @property
@@ -161,7 +173,7 @@ class LongTermDependencyGenerator(BaseTaskGenerator):
             sample_id, self.task_name, rendered_file, trace_data, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
-        duration = round(1.4 + D * 0.6 + 1.3, 2)
+        duration = round(1.4 + D * 0.6 + 5.0, 2)
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 
