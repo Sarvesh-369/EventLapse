@@ -32,7 +32,6 @@ class BounceBallScene(Scene):
         ball_color = colors[0]
         wall_color = colors[1]
 
-        # Continuous angle rotation theta in [0, 2*pi)
         rotation_angle = rng.uniform(0, 2 * math.pi)
         u = np.array([math.cos(rotation_angle), math.sin(rotation_angle), 0])
 
@@ -43,59 +42,64 @@ class BounceBallScene(Scene):
         wall1 = Rectangle(width=0.2, height=3.0, color=wall_color, fill_opacity=1).move_to(-u * wall_dist).rotate(rotation_angle)
         wall2 = Rectangle(width=0.2, height=3.0, color=wall_color, fill_opacity=1).move_to(u * wall_dist).rotate(rotation_angle)
 
-        start_offset = rng.uniform(-0.5 * wall_dist, 0.5 * wall_dist)
-        initial_target_positive = rng.choice([True, False])
-
+        start_offset = rng.uniform(-0.3 * wall_dist, 0.3 * wall_dist)
         ball.move_to(u * start_offset)
 
         self.add(wall1, wall2, ball)
         self.wait(0.2)
         current_time = 0.2
 
-        first_target = (u if initial_target_positive else -u) * (wall_dist - ball_radius - 0.1)
-        dist_first = abs(np.linalg.norm(first_target - (u * start_offset)))
+        if self.N == 0:
+            # Ball floats in interior space without contacting either wall
+            end_offset = rng.uniform(-0.3 * wall_dist, 0.3 * wall_dist)
+            self.play(ball.animate.move_to(u * end_offset), run_time=2.0)
+            current_time += 2.0
+        else:
+            initial_target_positive = rng.choice([True, False])
+            first_target = (u if initial_target_positive else -u) * (wall_dist - ball_radius - 0.1)
+            dist_first = abs(np.linalg.norm(first_target - (u * start_offset)))
 
-        first_leg_duration = max(0.3, dist_first / 3.0)
-        self.play(ball.animate.move_to(first_target), run_time=first_leg_duration)
-        current_time += first_leg_duration
+            first_leg_duration = max(0.3, dist_first / 3.0)
+            self.play(ball.animate.move_to(first_target), run_time=first_leg_duration)
+            current_time += first_leg_duration
 
-        wall_id = "wall_positive" if initial_target_positive else "wall_negative"
-
-        self.contact_events.append({
-            "contact_index": 1,
-            "timestamp": round(current_time, 2),
-            "wall_identity": wall_id,
-            "running_count": 1
-        })
-
-        current_target_positive = not initial_target_positive
-        one_way_duration = 1.0
-
-        for i in range(1, self.N):
-            target_pos = (u if current_target_positive else -u) * (wall_dist - ball_radius - 0.1)
-
-            self.play(ball.animate.move_to(target_pos), run_time=one_way_duration)
-            current_time += one_way_duration
-
-            wall_id = "wall_positive" if current_target_positive else "wall_negative"
+            wall_id = "wall_positive" if initial_target_positive else "wall_negative"
 
             self.contact_events.append({
-                "contact_index": i + 1,
+                "contact_index": 1,
                 "timestamp": round(current_time, 2),
                 "wall_identity": wall_id,
-                "running_count": i + 1
+                "running_count": 1
             })
 
-            current_target_positive = not current_target_positive
+            current_target_positive = not initial_target_positive
+            one_way_duration = 1.0
 
-        end_offset = rng.uniform(-0.5 * wall_dist, 0.5 * wall_dist)
-        end_target = u * end_offset
-        last_wall_val = (u if not current_target_positive else -u) * (wall_dist - ball_radius - 0.1)
-        dist_end = abs(np.linalg.norm(end_target - last_wall_val))
+            for i in range(1, self.N):
+                target_pos = (u if current_target_positive else -u) * (wall_dist - ball_radius - 0.1)
 
-        final_leg_duration = max(0.3, dist_end / 3.0)
-        self.play(ball.animate.move_to(end_target), run_time=final_leg_duration)
-        current_time += final_leg_duration
+                self.play(ball.animate.move_to(target_pos), run_time=one_way_duration)
+                current_time += one_way_duration
+
+                wall_id = "wall_positive" if current_target_positive else "wall_negative"
+
+                self.contact_events.append({
+                    "contact_index": i + 1,
+                    "timestamp": round(current_time, 2),
+                    "wall_identity": wall_id,
+                    "running_count": i + 1
+                })
+
+                current_target_positive = not current_target_positive
+
+            end_offset = rng.uniform(-0.3 * wall_dist, 0.3 * wall_dist)
+            end_target = u * end_offset
+            last_wall_val = (u if not current_target_positive else -u) * (wall_dist - ball_radius - 0.1)
+            dist_end = abs(np.linalg.norm(end_target - last_wall_val))
+
+            final_leg_duration = max(0.3, dist_end / 3.0)
+            self.play(ball.animate.move_to(end_target), run_time=final_leg_duration)
+            current_time += final_leg_duration
 
         question_duration = 3.7
         remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time - question_duration)
@@ -160,7 +164,7 @@ class BounceBallGenerator(BaseTaskGenerator):
             "Let's analyze the video step by step.",
             "",
             "### Scene Description",
-            "Ball bouncing between two walls."
+            "Ball moving near two walls."
         ]
         for e in scene.contact_events:
             cot_lines.append(f"- At {e['timestamp']:.2f}s: Ball contacted {e['wall_identity']} (count={e['running_count']})")

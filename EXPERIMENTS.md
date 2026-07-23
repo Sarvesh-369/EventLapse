@@ -10,7 +10,7 @@ This document provides a technical guide to the 5 core synthetic event-counting 
 - **Objective**: Profile the exact operational capability boundary $x^*$ across the 2D matrix of **Event Count ($N$)** vs **Event Frequency ($F$, Hz)** on frontier anchor models (e.g. Gemini 2.0 Flash / 1.5 Pro, GPT-4o, Claude 3.5 Sonnet, vLLM open-source VLMs).
 - **Domain Targets**: `bounce_ball`, `blinking`, `state_machine`
 - **Parameter Grids**:
-  - Event Count $N \in \{2, 4, 8, 12\}$
+  - Event Count $N \in \{0, 1, 2, 3, 4, 5, 6, 8, 10, 12\}$
   - Event Frequency $F \in \{0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0\}\text{ Hz}$
   - Global Video Duration: $24.0\text{s}$ constant
 - **Command**:

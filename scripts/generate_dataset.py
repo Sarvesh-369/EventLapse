@@ -14,10 +14,13 @@ from eventlapse.generation.bounce_ball import BounceBallGenerator
 from eventlapse.generation.blinking import BlinkingGenerator
 from eventlapse.generation.state_machine import StateMachineGenerator
 
+# Exact count grid matching Qwen3-VL evaluation matrix: [0, 1, 2, 3, 4, 5, 6, 8, 10, 12]
+COUNT_GRID = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12]
+
 TASK_GENERATOR_MAP = {
-    "bounce_ball": (BounceBallGenerator(), [2, 4, 8, 12]),
-    "blinking": (BlinkingGenerator(), [2, 4, 8, 12]),
-    "state_machine": (StateMachineGenerator(), [2, 4, 8, 12]),
+    "bounce_ball": (BounceBallGenerator(), COUNT_GRID),
+    "blinking": (BlinkingGenerator(), COUNT_GRID),
+    "state_machine": (StateMachineGenerator(), COUNT_GRID),
 }
 
 @click.command()
