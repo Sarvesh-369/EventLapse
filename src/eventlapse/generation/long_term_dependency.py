@@ -3,7 +3,7 @@ import hashlib
 import shutil
 from pathlib import Path
 from typing import Dict, Any, List
-from manim import Scene, Circle, Rectangle, Star, RIGHT, UP, DOWN, YELLOW, GREEN
+from manim import Scene, Circle, Rectangle, Star, VGroup, RIGHT, UP, DOWN, YELLOW, GREEN
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
 from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
@@ -35,18 +35,24 @@ class LongTermDependencyScene(Scene):
         parcels = []
         parcel_positions = [0, 1, 2]
 
+        marker = None
         for i in range(3):
             c_hex = colors[i]
             c_name = COLOR_NAMES[i % len(COLOR_NAMES)]
             shape = Circle(radius=0.4, color=c_hex, fill_opacity=1).move_to(RIGHT * x_positions[i] + UP * y_pos)
-            parcels.append({"id": i, "color_name": c_name, "hex": c_hex, "shape": shape})
-            self.add(shape)
 
-        marker = Star(n=5, outer_radius=0.2, color=YELLOW, fill_opacity=1).move_to(parcels[0]["shape"].get_center() + UP * 0.6)
-        self.add(marker)
+            if i == 0:
+                marker = Star(n=5, outer_radius=0.2, color=YELLOW, fill_opacity=1).move_to(RIGHT * x_positions[0] + UP * (y_pos + 0.6))
+                mobject = VGroup(shape, marker)
+            else:
+                mobject = shape
 
-        self.play(marker.animate.scale(1.2), run_time=0.3)
-        self.play(marker.animate.scale(1/1.2), run_time=0.3)
+            parcels.append({"id": i, "color_name": c_name, "hex": c_hex, "mobject": mobject})
+            self.add(mobject)
+
+        if marker is not None:
+            self.play(marker.animate.scale(1.2), run_time=0.3)
+            self.play(marker.animate.scale(1/1.2), run_time=0.3)
 
         bin_box = Rectangle(width=1.8, height=1.5, color=GREEN, fill_opacity=0.3).move_to(RIGHT * 3.0 + DOWN * 2.0)
         self.add(bin_box)
@@ -64,14 +70,10 @@ class LongTermDependencyScene(Scene):
             target_x_b = x_positions[pos_a_idx]
 
             self.play(
-                parcels[p_a]["shape"].animate.move_to(RIGHT * target_x_a + UP * y_pos),
-                parcels[p_b]["shape"].animate.move_to(RIGHT * target_x_b + UP * y_pos),
+                parcels[p_a]["mobject"].animate.move_to(RIGHT * target_x_a + UP * y_pos),
+                parcels[p_b]["mobject"].animate.move_to(RIGHT * target_x_b + UP * y_pos),
                 run_time=0.6
             )
-            if p_a == 0:
-                marker.move_to(RIGHT * target_x_a + UP * (y_pos + 0.6))
-            elif p_b == 0:
-                marker.move_to(RIGHT * target_x_b + UP * (y_pos + 0.6))
 
             parcel_positions[p_a], parcel_positions[p_b] = pos_b_idx, pos_a_idx
             current_time += 0.6
@@ -96,10 +98,8 @@ class LongTermDependencyScene(Scene):
         self.final_parcel_in_bin_id = entering_parcel_idx
         self.entered_delivery_bin = (entering_parcel_idx == self.marked_parcel_id)
 
-        winning_shape = parcels[entering_parcel_idx]["shape"]
-        self.play(winning_shape.animate.move_to(RIGHT * 3.0 + DOWN * 2.0), run_time=0.8)
-        if entering_parcel_idx == 0:
-            self.play(marker.animate.move_to(RIGHT * 3.0 + DOWN * 1.4), run_time=0.8)
+        winning_mobject = parcels[entering_parcel_idx]["mobject"]
+        self.play(winning_mobject.animate.move_to(RIGHT * 3.0 + DOWN * 2.0), run_time=0.8)
 
         current_time += 0.8
         self.wait(0.5)
