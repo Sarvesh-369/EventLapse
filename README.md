@@ -2,110 +2,248 @@
 
 > **Paper Title:** *EventLapse: Where Do Frontier Video LLMs Lose Events? Trace-Grounded Parametric Profiling of Temporal Capabilities*
 
-EventLapse is a research framework for profiling and diagnosing the temporal reasoning capabilities of frontier Video-Language Models (VLMs) across 7 synthetic video tasks using Manim Community Edition and FFmpeg, aligned with the **MORSE** executable trace evaluation methodology.
+EventLapse is a research framework for profiling and diagnosing the temporal reasoning capabilities of frontier Video-Language Models (VLMs) across **7 synthetic video tasks** rendered with Manim Community Edition, using the **MORSE** executable trace evaluation methodology with Trace Precision / Recall / F1 scoring and operational capability boundary estimation.
 
 ---
 
-## 🚀 Repository Quickstart & Installation
+## 🚀 Quickstart & Installation
 
-### 1. Clone & Install Dependencies
+### 1. Clone & Install
+
 ```bash
+git clone https://github.com/Sarvesh-369/EventLapse.git
 cd EventLapse
 pip install -e .
 ```
 
 ### 2. Configure Environment Variables
-Copy `.env.example` to `.env` and set your API keys:
+
 ```bash
 cp .env.example .env
 ```
-Ensure `GEMINI_API_KEY` is configured for Google Gemini experiments.
+
+Set API keys for the providers you intend to use:
+
+| Provider | Environment Variable | Notes |
+| :--- | :--- | :--- |
+| Google Gemini | `GEMINI_API_KEY` | Native video supported |
+| OpenAI | `OPENAI_API_KEY` | Frame sequences only |
+| Anthropic | `ANTHROPIC_API_KEY` | Frame sequences only |
+| AWS Bedrock | AWS credentials | Frame sequences only |
+| Fireworks AI | `FIREWORKS_API_KEY` | Frame sequences only |
+| **vLLM (open-source)** | `VLLM_BASE_URL` + `VLLM_API_KEY` | See §Open-Source Models via vLLM |
 
 ---
 
-## 📋 Comprehensive Experiment Instructions
+## 📊 7 Synthetic Tasks
 
-### 1. Check Available Models & Discovery
-Inspect provider capabilities and discover available Gemini model IDs:
-```bash
-python3 scripts/check_available_models.py --provider google
-```
+| Task | Control Axis | Parameter Range | Fixed Video Duration |
+| :--- | :--- | :---: | :---: |
+| **Event Counting** | Bounce events $N$ | $N \in \{1, 2, 4, 8, 10, 12, 16\}$ | 20.0 s |
+| **Event Frequency** | Frequency $f$ (Hz) | $f \in \{0.1, 0.2, 0.5, 1.0, 2.0, 5.0\}$ | 7.9 s |
+| **Temporal Ordering** | Sequence length $L$ | $L \in \{2, 3, 4, 8, 12, 16\}$ | 18.0 s |
+| **Duration Comparison** | Duration ratio $r$ | $r \in \{1.05, 1.10, 1.25, 1.50, 2.00, 3.00\}$ | 13.0 s |
+| **Causal Attribution** | Causal depth $C$ | $C \in \{1, 2, 3, 4, 5, 6\}$ | 18.0 s |
+| **Future Prediction** | Prediction horizon $H$ | $H \in \{1, 2, 3, 4, 5, 6\}$ | 10.0 s |
+| **Long-Term Dependency** | Intervening swaps $D$ | $D \in \{0, 2, 4, 8, 12, 16\}$ | 17.0 s |
 
-### 2. Generate Synthetic Dataset (Smoke Test or Full 20 Seeds)
-To render 2 smoke-test sample videos per task:
+Videos are constant-duration per task (durations are fixed regardless of control parameter value) to prevent duration being a confound.
+
+---
+
+## 🧪 Running Experiments
+
+### 1. Generate Synthetic Dataset
+
 ```bash
+# Smoke test (2 seeds per task — fast)
 python3 scripts/generate_dataset.py --num-seeds 2 --tasks all
-```
-To generate the full paper dataset (20 seeds per control value across all tasks):
-```bash
-python3 scripts/generate_dataset.py --num-seeds 20 --tasks all
-```
-Videos are saved in `data/videos/{task_name}/`, traces in `data/traces/{task_name}/`, and ground-truth in `data/gt/{task_name}/`.
 
-### 3. Validate Generated Dataset
-Validate dataset samples against duration, event count, and contrast rules:
+# Full paper dataset (30 seeds per task)
+python3 scripts/generate_dataset.py --num-seeds 30 --tasks all
+```
+
+Outputs are saved to:
+- `data/videos/{task_name}/` — Rendered `.mp4` files
+- `data/traces/{task_name}/` — Ground-truth executable JSON traces
+- `data/gt/{task_name}/` — Ground-truth answer files
+- `data/manifest.jsonl` — Dataset index
+
+### 2. Validate Dataset
+
 ```bash
 python3 scripts/validate_dataset.py
 ```
 
-### 4. Run Model Smoke Test
-Run a quick smoke test on model loading and optional video query:
+### 3. Run Capability Boundary Sweep (Group 1)
+
 ```bash
-python3 scripts/smoke_test_model.py --provider google --model-name gemini-3.5-flash
+# Google Gemini 2.0 Flash — native video
+python3 scripts/run_experiment.py \
+  --provider google \
+  --model-name gemini-2.0-flash \
+  --input-mode native_video \
+  --prompt-condition structured_trace
+
+# GPT-4o — frame sequence at 2 fps
+python3 scripts/run_experiment.py \
+  --provider openai \
+  --model-name gpt-4o \
+  --input-mode frames_2fps \
+  --prompt-condition structured_trace
+
+# Claude 3.5 Sonnet — frame sequence at 2 fps
+python3 scripts/run_experiment.py \
+  --provider anthropic \
+  --model-name claude-3-5-sonnet-20241022 \
+  --input-mode frames_2fps \
+  --prompt-condition structured_trace
 ```
 
-### 5. Run Capability Boundaries Experiment Sweep (Group 1)
-Run Gemini 3.5 Flash on native video:
+### 4. Frame-Density Intervention Sweep (Group 3A)
+
+Run the same model at different frame sampling rates $\{1, 2, 4, 8, 16\}$ fps:
+
 ```bash
-python3 scripts/run_experiment.py --provider google --model-name gemini-3.5-flash --input-mode native_video --prompt-condition structured_trace
+for fps in 1fps 2fps 4fps 8fps 16fps; do
+  python3 scripts/run_experiment.py \
+    --provider google \
+    --model-name gemini-2.0-flash \
+    --input-mode frames_${fps} \
+    --prompt-condition structured_trace
+done
 ```
 
-### 6. Run Frame-Density Interventions (Group 3A)
-Compare native video vs 2 FPS vs 10 FPS frame sampling:
+### 5. Prompting & Thinking Interventions (Group 3C)
+
 ```bash
-python3 scripts/run_experiment.py --provider google --model-name gemini-3.5-flash --input-mode frames_2fps --prompt-condition structured_trace
-python3 scripts/run_experiment.py --provider google --model-name gemini-3.5-flash --input-mode frames_10fps --prompt-condition structured_trace
+# Direct answer (no structured trace CoT)
+python3 scripts/run_experiment.py \
+  --provider google --model-name gemini-2.0-flash \
+  --input-mode native_video --prompt-condition direct
+
+# Structured trace CoT
+python3 scripts/run_experiment.py \
+  --provider google --model-name gemini-2.0-flash \
+  --input-mode native_video --prompt-condition structured_trace
+
+# Extended thinking (Gemini thinking model or o3-mini)
+python3 scripts/run_experiment.py \
+  --provider google --model-name gemini-2.0-flash-thinking \
+  --input-mode native_video --prompt-condition thinking
 ```
 
-### 7. Run Prompting & Thinking Interventions (Group 3C)
-```bash
-python3 scripts/run_experiment.py --provider google --model-name gemini-3.5-flash --input-mode native_video --prompt-condition direct
-python3 scripts/run_experiment.py --provider google --model-name gemini-3.5-flash --input-mode native_video --prompt-condition thinking
-```
+### 6. Master Pipeline Script
 
-### 8. Master Script to Run All Experiments
-To run the master automated pipeline script:
 ```bash
 ./scripts/run_all_experiments.sh
 ```
 
-### 9. Aggregate Results & Generate Paper Figures
-Consolidate results into CSV and render 7-panel paper figures:
+### 7. Aggregate Results & Generate Paper Figures
+
 ```bash
 python3 scripts/aggregate_results.py
 python3 scripts/make_figures.py
 ```
 
-### 10. Run Unit & Integration Tests
+---
+
+## 🖥️ Open-Source Models via vLLM
+
+You can host any open-source Vision-Language Model using [vLLM](https://github.com/vllm-project/vllm)'s OpenAI-compatible API server and run EventLapse evaluations against it.
+
+### Step 1: Launch vLLM Server
+
 ```bash
-pytest tests/
+# Example: Qwen2-VL-7B-Instruct
+vllm serve Qwen/Qwen2-VL-7B-Instruct --port 8000
+
+# Example: LLaVA-NeXT-Video-7B
+vllm serve lmms-lab/LLaVA-NeXT-Video-7B --port 8000
+
+# Example: InternVL2-8B
+vllm serve OpenGVLab/InternVL2-8B --port 8000
 ```
+
+### Step 2: Set Environment Variables
+
+```bash
+export VLLM_BASE_URL="http://localhost:8000/v1"   # Default: localhost:8000
+export VLLM_API_KEY="EMPTY"                        # Default: EMPTY
+```
+
+### Step 3: Run EventLapse Evaluation
+
+```bash
+python3 scripts/run_experiment.py \
+  --provider vllm \
+  --model-name Qwen/Qwen2-VL-7B-Instruct \
+  --input-mode frames_2fps \
+  --prompt-condition structured_trace
+```
+
+> **Tip:** Use `--input-mode frames_2fps` or `--input-mode frames_8fps` for models that do not natively support video file input. Use `--input-mode native_video` for models with native video support (e.g. Qwen2-VL).
+
+---
+
+## 📏 Evaluation Metrics
+
+EventLapse computes dual-tier evaluation aligned with the MORSE methodology:
+
+| Metric | Description |
+| :--- | :--- |
+| **Exact Match (EM)** | Binary exact string match of final predicted answer vs. ground truth |
+| **Trace Precision ($P$)** | Fraction of model-reported event steps matching ground-truth steps |
+| **Trace Recall ($R$)** | Fraction of true ground-truth events successfully detected by model |
+| **Trace F1 ($F_1$)** | Harmonic mean: $F_1 = \frac{2 \cdot P \cdot R}{P + R}$ |
+| **Accidental Correctness Rate (ACR)** | Correct final answer but corrupted/hallucinated trace ($F_1 < 1.0$) |
+| **Reasoning Failure Rate (RFR)** | Perfect trace ($F_1 = 1.0$) but wrong final answer |
+| **Operational Boundary ($x^*$)** | Max difficulty where lower 95% Wilson CI bound ≥ $\tau = 0.80$ |
 
 ---
 
 ## 📁 Repository Structure
-- `configs/`: Model, candidate, generation, and task YAML configs.
-- `reference_code/`: Standalone reference scripts for synthetic Manim video generators.
-- `data/`: Output dataset directory (`videos/`, `traces/`, `gt/`, `manifest.jsonl`). *Excluded from git tracking.*
-- `src/eventlapse/`: Core python package:
-  - `generation/`: Manim synthetic task video & trace generators.
-  - `traces/`: Schemas, serialization, and validation.
-  - `models/`: Abstract interface, `load_model.py` mandatory entry point, and Gemini / provider adapters.
-  - `inference/`: Prompts, runner, and response parser.
-  - `interventions/`: 2 FPS / 10 FPS frame extraction, oracle evidence, prompting, and thinking controls.
-  - `evaluation/`: Exact match, Wilson 95% CIs, operational capability boundaries ($\tau=0.80$), and MORSE trace evaluator.
-  - `datasets/`: RepCount-A natural transfer dataset parsers.
-  - `experiments/`: Experiment group routines.
-  - `utils/`: Logging, caching, seeds, paths.
-- `scripts/`: Master runner scripts, dataset generation, model discovery, aggregation, and plotting.
-- `tests/`: Pytest unit and integration test suite.
+
+```
+EventLapse/
+├── configs/               # Model, generation, task, and experiment YAML configs
+├── data/                  # Dataset outputs (git-ignored): videos/, traces/, gt/, manifest.jsonl
+├── scripts/               # Master runner scripts, dataset generation, aggregation, and plotting
+├── src/eventlapse/
+│   ├── generation/        # Manim synthetic task generators (7 tasks)
+│   ├── models/
+│   │   ├── base.py        # BaseVideoModel abstract interface
+│   │   ├── load_model.py  # Provider dispatch (google, openai, anthropic, bedrock, fireworks, vllm)
+│   │   └── adapters/      # Provider adapters: gemini, openai, anthropic, bedrock, fireworks, vllm
+│   ├── inference/         # Prompts, runner, and response parser
+│   ├── interventions/     # Frame extraction (1–16 fps), oracle evidence, prompting controls
+│   ├── evaluation/        # Exact match, Trace F1, Wilson 95% CIs, operational boundaries, MORSE evaluator
+│   ├── datasets/          # RepCount-A natural transfer dataset parsers
+│   ├── experiments/       # Experiment group routines
+│   └── utils/             # Logging, caching, seeds, paths
+└── tests/                 # Pytest unit and integration test suite (15 tests)
+```
+
+---
+
+## 🧪 Unit Tests
+
+```bash
+PYTHONPATH=src pytest tests/
+```
+
+All 15 tests should pass across: task generation, causal attribution, trace evaluation, model dispatch (including vLLM), and MORSE evaluator.
+
+---
+
+## 📄 Citation
+
+If you use EventLapse in your research, please cite:
+
+```bibtex
+@article{eventlapse2026,
+  title={EventLapse: Where Do Frontier Video LLMs Lose Events? Trace-Grounded Parametric Profiling of Temporal Capabilities},
+  author={},
+  year={2026}
+}
+```
