@@ -7,6 +7,7 @@ from eventlapse.models.adapters.anthropic import AnthropicAdapter
 from eventlapse.models.adapters.bedrock import BedrockAdapter
 from eventlapse.models.adapters.fireworks import FireworksAdapter
 from eventlapse.models.adapters.vllm import VLLMAdapter
+from eventlapse.models.adapters.propensity_client import PropensityClientAdapter
 
 def parse_model_spec(provider_or_spec: str, model_name: Optional[str] = None) -> Tuple[str, str]:
     """
@@ -24,7 +25,7 @@ def parse_model_spec(provider_or_spec: str, model_name: Optional[str] = None) ->
         "aws": "bedrock",
         "fireworks": "fireworks",
         "vllm": "vllm",
-        "propensity": "vllm"
+        "propensity": "propensity"
     }
 
     if provider_or_spec.lower() in provider_alias_map and model_name:
@@ -35,7 +36,7 @@ def parse_model_spec(provider_or_spec: str, model_name: Optional[str] = None) ->
         raw_p = parts[0]
         resolved_provider = provider_alias_map.get(raw_p.lower(), raw_p.lower())
         resolved_model = parts[1]
-    elif model_name and "/" in model_name and provider_or_spec.lower() not in ["vllm", "google", "openai", "anthropic", "bedrock", "fireworks"]:
+    elif model_name and "/" in model_name and provider_or_spec.lower() not in ["vllm", "google", "openai", "anthropic", "bedrock", "fireworks", "propensity"]:
         parts = model_name.split("/", 1)
         raw_p = parts[0]
         resolved_provider = provider_alias_map.get(raw_p.lower(), raw_p.lower())
@@ -73,5 +74,7 @@ def load_model(provider: str, model_name: Optional[str] = None, config: Optional
         return FireworksAdapter(config)
     elif provider_lower == "vllm":
         return VLLMAdapter(config)
+    elif provider_lower in ["propensity", "propensity_client"]:
+        return PropensityClientAdapter(config)
     else:
-        raise ValueError(f"Unsupported model provider: '{resolved_provider}'. Supported providers: google, openai, anthropic, bedrock, fireworks, vllm.")
+        raise ValueError(f"Unsupported model provider: '{resolved_provider}'. Supported providers: google, openai, anthropic, bedrock, fireworks, vllm, propensity.")

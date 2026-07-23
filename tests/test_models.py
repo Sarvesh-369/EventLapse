@@ -26,6 +26,11 @@ def test_propensity_bench_format():
     assert m.config.provider == "google"
     assert m.config.model_name == "gemini-3.1-pro-preview"
 
+def test_propensity_adapter_dispatch():
+    model = load_model("propensity", "gemini/gemini-2.0-flash")
+    assert model.supports_native_video is True
+    assert model.supports_multiple_images is True
+
 def test_vllm_model_dispatch():
     cfg = ModelConfig(provider="vllm", model_name="Qwen/Qwen2-VL-7B-Instruct")
     model = load_model("vllm", "Qwen/Qwen2-VL-7B-Instruct", cfg)
