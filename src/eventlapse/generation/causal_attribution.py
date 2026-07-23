@@ -161,6 +161,28 @@ class CausalAttributionGenerator(BaseTaskGenerator):
             "events": scene.events
         }
 
+        cot_lines = [
+            f"**Question:** {question} Show your reasoning and put the final answer in \\boxed{{}}",
+            "",
+            "Let's analyze the video step by step.",
+            "",
+            "### Scene Description",
+            f"Parallel scripted causal chains (depth C={C}) activating toward lamp.",
+            "",
+            "### Step 1: Trace Causal Graph Chain Activations"
+        ]
+        for e in scene.events:
+            cot_lines.append(f"- At {e['timestamp']:.2f}s: [{e['type']}] by {e['object']} object")
+
+        cot_lines.extend([
+            "",
+            "### Step 2: Identify Root Cause",
+            f"The chain initiated by the {exact_answer} object successfully triggered the lamp activation event.",
+            "",
+            f"\\boxed{{{exact_answer}}}"
+        ])
+        cot_text = "\n".join(cot_lines)
+
         gt_data = {
             "sample_id": sample_id,
             "question": question,
@@ -171,8 +193,8 @@ class CausalAttributionGenerator(BaseTaskGenerator):
             "seed": seed
         }
 
-        dest_video, dest_trace, dest_gt = save_sample_outputs(
-            sample_id, self.task_name, rendered_file, trace_data, gt_data, output_dir
+        dest_video, dest_trace, dest_cot, dest_gt = save_sample_outputs(
+            sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
         duration = round(1.0 + 3 * (0.6 + C * 0.4) + 3.7, 2)
@@ -189,6 +211,7 @@ class CausalAttributionGenerator(BaseTaskGenerator):
             question=question,
             exact_answer=exact_answer,
             executable_trace=trace_data,
+            cot_text=cot_text,
             generation_config={"resolution": resolution, "fps": fps},
             duration=duration,
             fps=fps,

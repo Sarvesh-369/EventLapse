@@ -139,6 +139,31 @@ class EventFrequencyGenerator(BaseTaskGenerator):
             "events": scene.events
         }
 
+        cot_lines = [
+            f"**Question:** {question} Show your reasoning and put the final answer in \\boxed{{}}",
+            "",
+            "Let's analyze the video step by step.",
+            "",
+            "### Scene Description",
+            "Left pendulum and Right pendulum oscillating at different frequencies.",
+            "",
+            "### Step 1: Track Cycles",
+        ]
+        for e in scene.events:
+            cot_lines.append(f"- At {e['timestamp']:.2f}s: {e['side'].capitalize()} pendulum completed cycle {e['completed_cycle']} (freq={e['frequency']:.2f} Hz)")
+
+        cot_lines.extend([
+            "",
+            "### Step 2: Compare Oscillation Frequencies",
+            f"Left pendulum rate vs Right pendulum rate comparison shows '{exact_answer}' side completed cycles faster.",
+            "",
+            "### Step 3: Derive Answer",
+            f"Faster pendulum: {exact_answer}",
+            "",
+            f"\\boxed{{{exact_answer}}}"
+        ])
+        cot_text = "\n".join(cot_lines)
+
         gt_data = {
             "sample_id": sample_id,
             "question": question,
@@ -149,8 +174,8 @@ class EventFrequencyGenerator(BaseTaskGenerator):
             "seed": seed
         }
 
-        dest_video, dest_trace, dest_gt = save_sample_outputs(
-            sample_id, self.task_name, rendered_file, trace_data, gt_data, output_dir
+        dest_video, dest_trace, dest_cot, dest_gt = save_sample_outputs(
+            sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
 
@@ -166,6 +191,7 @@ class EventFrequencyGenerator(BaseTaskGenerator):
             question=question,
             exact_answer=exact_answer,
             executable_trace=trace_data,
+            cot_text=cot_text,
             generation_config={"resolution": resolution, "fps": fps},
             duration=duration + 3.9,
             fps=fps,

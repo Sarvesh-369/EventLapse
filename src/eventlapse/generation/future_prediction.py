@@ -141,6 +141,31 @@ class FuturePredictionGenerator(BaseTaskGenerator):
             "target_future_color": exact_answer
         }
 
+        cot_lines = [
+            f"**Question:** {question} Show your reasoning and put the final answer in \\boxed{{}}",
+            "",
+            "Let's analyze the video step by step.",
+            "",
+            "### Scene Description",
+            "Four colored squares flashing in a cyclic repeating pattern.",
+            "",
+            "### Step 1: Observed Flash Sequence"
+        ]
+        for e in scene.observed_sequence:
+            cot_lines.append(f"- Step {e['step']} at {e['timestamp']:.2f}s: {e['color_name']} square flashed")
+
+        cot_lines.extend([
+            "",
+            "### Step 2: Infer Cyclic Pattern Rule",
+            "Pattern repeats cyclic permutation over 4 squares.",
+            "",
+            f"### Step 3: Extrapolate Prediction Horizon h={h}",
+            f"Square predicted to flash {h} step(s) after clip end: {exact_answer}.",
+            "",
+            f"\\boxed{{{exact_answer}}}"
+        ])
+        cot_text = "\n".join(cot_lines)
+
         gt_data = {
             "sample_id": sample_id,
             "question": question,
@@ -151,8 +176,8 @@ class FuturePredictionGenerator(BaseTaskGenerator):
             "seed": seed
         }
 
-        dest_video, dest_trace, dest_gt = save_sample_outputs(
-            sample_id, self.task_name, rendered_file, trace_data, gt_data, output_dir
+        dest_video, dest_trace, dest_cot, dest_gt = save_sample_outputs(
+            sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
         duration = round(0.5 + 8 * 0.7 + 3.9, 2)
@@ -169,6 +194,7 @@ class FuturePredictionGenerator(BaseTaskGenerator):
             question=question,
             exact_answer=exact_answer,
             executable_trace=trace_data,
+            cot_text=cot_text,
             generation_config={"resolution": resolution, "fps": fps},
             duration=duration,
             fps=fps,

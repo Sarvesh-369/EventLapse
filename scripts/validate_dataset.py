@@ -49,6 +49,10 @@ def main(data_dir: str):
             if not trace_file.exists():
                 errors.append(f"Sample '{sid}': Missing trace file {trace_file}")
 
+            cot_file = base_dir / "reasoning_traces" / item.get("task_name", "") / f"{sid}.txt"
+            if not cot_file.exists():
+                errors.append(f"Sample '{sid}': Missing CoT reasoning file {cot_file}")
+
             gt_file = base_dir / "gt" / item.get("task_name", "") / f"{sid}_gt.json"
             if not gt_file.exists():
                 errors.append(f"Sample '{sid}': Missing ground-truth file {gt_file}")

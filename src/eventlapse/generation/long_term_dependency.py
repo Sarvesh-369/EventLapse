@@ -32,7 +32,7 @@ class LongTermDependencyScene(Scene):
         y_pos = 1.0
 
         parcels = []
-        parcel_positions = [0, 1, 2] # current slot index for parcel 0, 1, 2
+        parcel_positions = [0, 1, 2]
 
         for i in range(3):
             c_hex = colors[i]
@@ -41,14 +41,12 @@ class LongTermDependencyScene(Scene):
             parcels.append({"id": i, "color_name": c_name, "hex": c_hex, "shape": shape})
             self.add(shape)
 
-        # Mark parcel 0 with a yellow star
         marker = Star(n=5, outer_radius=0.2, color=YELLOW, fill_opacity=1).move_to(parcels[0]["shape"].get_center() + UP * 0.6)
         self.add(marker)
 
         self.play(marker.animate.scale(1.2), run_time=0.3)
         self.play(marker.animate.scale(1/1.2), run_time=0.3)
 
-        # Delivery bin at bottom right
         bin_box = Rectangle(width=1.8, height=1.5, color=GREEN, fill_opacity=0.3).move_to(RIGHT * 3.0 + DOWN * 2.0)
         self.add(bin_box)
 
@@ -84,14 +82,11 @@ class LongTermDependencyScene(Scene):
                 "positions": list(parcel_positions)
             })
 
-        # 50% positive cases: marked parcel (0) enters bin
-        # 50% negative cases: unmarked parcel (1 or 2) enters bin
         should_marked_enter = (self.seed % 2 == 0)
 
         if should_marked_enter:
             entering_parcel_idx = 0
         else:
-            # Deterministically select parcel 1 or 2
             entering_parcel_idx = 1 if (self.seed // 2) % 2 == 0 else 2
 
         self.final_parcel_in_bin_id = entering_parcel_idx
@@ -159,6 +154,31 @@ class LongTermDependencyGenerator(BaseTaskGenerator):
             "events": scene.swap_events
         }
 
+        cot_lines = [
+            f"**Question:** {question} Show your reasoning and put the final answer in \\boxed{{}}",
+            "",
+            "Let's analyze the video step by step.",
+            "",
+            "### Scene Description",
+            f"Initial marking on parcel '{COLOR_NAMES[0]}', followed by D={D} position swaps and delivery bin entry.",
+            "",
+            "### Step 1: Track Intervening Swaps"
+        ]
+        for e in scene.swap_events:
+            cot_lines.append(f"- Swap {e['swap_index']} at {e['timestamp']:.2f}s: swapped {e['swapped_parcels'][0]} and {e['swapped_parcels'][1]}")
+
+        cot_lines.extend([
+            "",
+            "### Step 2: Track Final Bin Parcel Identity",
+            f"Parcel entering delivery bin ID: {scene.final_parcel_in_bin_id} ({COLOR_NAMES[scene.final_parcel_in_bin_id]}).",
+            "",
+            "### Step 3: Match Marked Parcel",
+            f"Did marked parcel enter bin? {exact_answer.upper()}.",
+            "",
+            f"\\boxed{{{exact_answer}}}"
+        ])
+        cot_text = "\n".join(cot_lines)
+
         gt_data = {
             "sample_id": sample_id,
             "question": question,
@@ -169,8 +189,8 @@ class LongTermDependencyGenerator(BaseTaskGenerator):
             "seed": seed
         }
 
-        dest_video, dest_trace, dest_gt = save_sample_outputs(
-            sample_id, self.task_name, rendered_file, trace_data, gt_data, output_dir
+        dest_video, dest_trace, dest_cot, dest_gt = save_sample_outputs(
+            sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
         duration = round(1.4 + D * 0.6 + 5.0, 2)
@@ -187,6 +207,7 @@ class LongTermDependencyGenerator(BaseTaskGenerator):
             question=question,
             exact_answer=exact_answer,
             executable_trace=trace_data,
+            cot_text=cot_text,
             generation_config={"resolution": resolution, "fps": fps},
             duration=duration,
             fps=fps,

@@ -14,6 +14,7 @@ class SyntheticSample:
     question: str
     exact_answer: str
     executable_trace: Dict[str, Any]
+    cot_text: str
     generation_config: Dict[str, Any]
     duration: float
     fps: int

@@ -126,6 +126,39 @@ class EventCountingGenerator(BaseTaskGenerator):
             "events": scene.contact_events
         }
 
+        # Build MORSE / low-frequency-trap text CoT reasoning format
+        cot_lines = [
+            f"**Question:** {question} Show your reasoning and put the final answer in \\boxed{{}}",
+            "",
+            "Let's analyze the video step by step.",
+            "",
+            "### Scene Description",
+            "The following events occurred in the video:"
+        ]
+        if scene.contact_events:
+            for e in scene.contact_events:
+                cot_lines.append(f"- At {e['timestamp']:.2f}s: Ball contacted {e['wall_identity']} (count={e['running_count']})")
+        else:
+            cot_lines.append("- No wall contact events occurred.")
+
+        cot_lines.extend([
+            "",
+            "### Step 1: Understand the Goal",
+            "We need to count the total number of times the ball contacts the walls.",
+            "",
+            "### Step 2: Analyze Contact Events",
+            f"Scanning event log: {len(scene.contact_events)} wall contact events detected.",
+            "",
+            "### Step 3: Derive the Answer",
+            f"Total counted contact events: {N}",
+            "",
+            "### Step 4: Verification",
+            f"Event schedule analysis confirmed {N} contacts. Matches.",
+            "",
+            f"\\boxed{{{N}}}"
+        ])
+        cot_text = "\n".join(cot_lines)
+
         gt_data = {
             "sample_id": sample_id,
             "question": question,
@@ -136,8 +169,8 @@ class EventCountingGenerator(BaseTaskGenerator):
             "seed": seed
         }
 
-        dest_video, dest_trace, dest_gt = save_sample_outputs(
-            sample_id, self.task_name, rendered_file, trace_data, gt_data, output_dir
+        dest_video, dest_trace, dest_cot, dest_gt = save_sample_outputs(
+            sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
         duration = round(0.7 + N * 1.0 + 3.7, 2)
@@ -154,6 +187,7 @@ class EventCountingGenerator(BaseTaskGenerator):
             question=question,
             exact_answer=exact_answer,
             executable_trace=trace_data,
+            cot_text=cot_text,
             generation_config={"resolution": resolution, "fps": fps},
             duration=duration,
             fps=fps,

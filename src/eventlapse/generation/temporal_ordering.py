@@ -121,6 +121,28 @@ class TemporalOrderingGenerator(BaseTaskGenerator):
             "events": scene.crossing_events
         }
 
+        cot_lines = [
+            f"**Question:** {question} Show your reasoning and put the final answer in \\boxed{{}}",
+            "",
+            "Let's analyze the video step by step.",
+            "",
+            "### Scene Description",
+            f"Objects crossing finish line sequentially (sequence length L={L}).",
+            "",
+            "### Step 1: Record Crossing Order"
+        ]
+        for e in scene.crossing_events:
+            cot_lines.append(f"- Position {e['rank']} at {e['timestamp']:.2f}s: {e['color_name']} object")
+
+        cot_lines.extend([
+            "",
+            f"### Step 2: Extract Queried Position k={k}",
+            f"Object crossing in position {k} is {exact_answer}.",
+            "",
+            f"\\boxed{{{exact_answer}}}"
+        ])
+        cot_text = "\n".join(cot_lines)
+
         gt_data = {
             "sample_id": sample_id,
             "question": question,
@@ -131,8 +153,8 @@ class TemporalOrderingGenerator(BaseTaskGenerator):
             "seed": seed
         }
 
-        dest_video, dest_trace, dest_gt = save_sample_outputs(
-            sample_id, self.task_name, rendered_file, trace_data, gt_data, output_dir
+        dest_video, dest_trace, dest_cot, dest_gt = save_sample_outputs(
+            sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
         duration = round(0.5 + L * 1.2 + 3.7, 2)
@@ -149,6 +171,7 @@ class TemporalOrderingGenerator(BaseTaskGenerator):
             question=question,
             exact_answer=exact_answer,
             executable_trace=trace_data,
+            cot_text=cot_text,
             generation_config={"resolution": resolution, "fps": fps},
             duration=duration,
             fps=fps,

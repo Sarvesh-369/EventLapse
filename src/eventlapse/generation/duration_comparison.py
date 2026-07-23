@@ -129,6 +129,31 @@ class DurationComparisonGenerator(BaseTaskGenerator):
             "events": scene.events
         }
 
+        cot_lines = [
+            f"**Question:** {question} Show your reasoning and put the final answer in \\boxed{{}}",
+            "",
+            "Let's analyze the video step by step.",
+            "",
+            "### Scene Description",
+            "Two objects entering and leaving marked stopping zones.",
+            "",
+            "### Step 1: Track Entry and Exit Timestamps"
+        ]
+        for e in scene.events:
+            cot_lines.append(f"- At {e['timestamp']:.2f}s: {e['object']} {e['event']}")
+
+        cot_lines.extend([
+            "",
+            "### Step 2: Calculate Dwell Durations",
+            f"Top object dwell duration vs Bottom object dwell duration (ratio r={r:.2f}).",
+            "",
+            "### Step 3: Compare Durations",
+            f"Longer stopped object: {exact_answer}.",
+            "",
+            f"\\boxed{{{exact_answer}}}"
+        ])
+        cot_text = "\n".join(cot_lines)
+
         gt_data = {
             "sample_id": sample_id,
             "question": question,
@@ -139,8 +164,8 @@ class DurationComparisonGenerator(BaseTaskGenerator):
             "seed": seed
         }
 
-        dest_video, dest_trace, dest_gt = save_sample_outputs(
-            sample_id, self.task_name, rendered_file, trace_data, gt_data, output_dir
+        dest_video, dest_trace, dest_cot, dest_gt = save_sample_outputs(
+            sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
         duration = round(3.5 + 2.0 * r + 3.7, 2)
@@ -157,6 +182,7 @@ class DurationComparisonGenerator(BaseTaskGenerator):
             question=question,
             exact_answer=exact_answer,
             executable_trace=trace_data,
+            cot_text=cot_text,
             generation_config={"resolution": resolution, "fps": fps},
             duration=duration,
             fps=fps,
