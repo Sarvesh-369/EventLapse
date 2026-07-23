@@ -22,45 +22,74 @@ class EventCountingScene(Scene):
         ball_color = colors[0]
         wall_color = colors[1]
 
+        rng = random.Random(self.seed)
         orientation = self.seed % 2
-        ball_radius = random.uniform(0.25, 0.35)
+        ball_radius = rng.uniform(0.25, 0.35)
         ball = Circle(radius=ball_radius, color=ball_color, fill_opacity=1)
 
-        wall_dist = random.uniform(2.5, 3.5)
+        wall_dist = rng.uniform(2.5, 3.5)
         wall1 = Rectangle(width=0.2, height=3.0, color=wall_color, fill_opacity=1)
         wall2 = Rectangle(width=0.2, height=3.0, color=wall_color, fill_opacity=1)
+
+        # Pick random interior start position away from both walls
+        start_offset = rng.uniform(-0.5 * wall_dist, 0.5 * wall_dist)
+        initial_target_positive = rng.choice([True, False])
 
         if orientation == 0:
             wall1.move_to(LEFT * wall_dist)
             wall2.move_to(RIGHT * wall_dist)
-            ball.move_to(LEFT * (wall_dist - ball_radius - 0.1))
-            current_target_right = True
+            ball.move_to(RIGHT * start_offset)
         else:
             wall1.rotate(1.5708)
             wall2.rotate(1.5708)
             wall1.move_to(DOWN * wall_dist)
             wall2.move_to(UP * wall_dist)
-            ball.move_to(DOWN * (wall_dist - ball_radius - 0.1))
-            current_target_right = True
+            ball.move_to(UP * start_offset)
 
         self.add(wall1, wall2, ball)
         self.wait(0.2)
         current_time = 0.2
 
+        # Initial move from interior start position to first wall
+        if orientation == 0:
+            first_target = (RIGHT if initial_target_positive else LEFT) * (wall_dist - ball_radius - 0.1)
+            dist_first = abs(first_target[0] - start_offset)
+        else:
+            first_target = (UP if initial_target_positive else DOWN) * (wall_dist - ball_radius - 0.1)
+            dist_first = abs(first_target[1] - start_offset)
+
+        first_leg_duration = max(0.3, dist_first / 3.0)
+        self.play(ball.animate.move_to(first_target), run_time=first_leg_duration)
+        current_time += first_leg_duration
+
+        wall_id = "wall_right" if initial_target_positive else "wall_left"
+        dir_before = "right" if initial_target_positive else "left"
+        dir_after = "left" if initial_target_positive else "right"
+
+        self.contact_events.append({
+            "contact_index": 1,
+            "timestamp": round(current_time, 2),
+            "wall_identity": wall_id,
+            "direction_before": dir_before,
+            "direction_after": dir_after,
+            "running_count": 1
+        })
+
+        current_target_positive = not initial_target_positive
         one_way_duration = 1.0
 
-        for i in range(self.N):
+        for i in range(1, self.N):
             if orientation == 0:
-                target_pos = (RIGHT if current_target_right else LEFT) * (wall_dist - ball_radius - 0.1)
+                target_pos = (RIGHT if current_target_positive else LEFT) * (wall_dist - ball_radius - 0.1)
             else:
-                target_pos = (UP if current_target_right else DOWN) * (wall_dist - ball_radius - 0.1)
+                target_pos = (UP if current_target_positive else DOWN) * (wall_dist - ball_radius - 0.1)
 
             self.play(ball.animate.move_to(target_pos), run_time=one_way_duration)
             current_time += one_way_duration
 
-            wall_id = "wall_right" if current_target_right else "wall_left"
-            dir_before = "right" if current_target_right else "left"
-            dir_after = "left" if current_target_right else "right"
+            wall_id = "wall_right" if current_target_positive else "wall_left"
+            dir_before = "right" if current_target_positive else "left"
+            dir_after = "left" if current_target_positive else "right"
 
             self.contact_events.append({
                 "contact_index": i + 1,
@@ -71,7 +100,7 @@ class EventCountingScene(Scene):
                 "running_count": i + 1
             })
 
-            current_target_right = not current_target_right
+            current_target_positive = not current_target_positive
 
         self.wait(0.5)
 
@@ -172,7 +201,7 @@ class EventCountingGenerator(BaseTaskGenerator):
             sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
-        duration = round(0.7 + N * 1.0 + 3.7, 2)
+        duration = round(0.7 + (N - 1) * 1.0 + 1.0 + 3.7, 2)
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 
