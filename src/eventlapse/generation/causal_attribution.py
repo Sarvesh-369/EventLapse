@@ -1,22 +1,21 @@
 import random
 import shutil
+import json
+import subprocess
 from pathlib import Path
 from typing import Dict, Any, List
-from manim import Scene, Circle, Square, Line, Text, RIGHT, LEFT, UP, DOWN, GREY, YELLOW
+from manim import Scene, Circle, Square, Line, Text, RIGHT, LEFT, UP, DOWN, GREY, YELLOW, RED
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
 from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
 from eventlapse.utils.caching import compute_file_checksum
-from eventlapse.utils.seeds import set_seed, get_nuisance_colors
+from eventlapse.utils.seeds import set_seed
 
-COLOR_NAMES = ["red", "blue", "green", "purple", "orange", "cyan"]
+COLOR_NAMES = ["red", "blue", "green"]
 HEX_MAP = {
     "red": "#FF4444",
     "blue": "#4444FF",
-    "green": "#44FF44",
-    "purple": "#AA44FF",
-    "orange": "#FF8844",
-    "cyan": "#44FFFF"
+    "green": "#44FF44"
 }
 
 class CausalAttributionScene(Scene):
@@ -24,102 +23,193 @@ class CausalAttributionScene(Scene):
         super().__init__(**kwargs)
         self.C = int(C)
         self.seed = seed
-        self.correct_cause_color = ""
-        self.causal_events = []
-        self.chain_metadata = []
+        self.true_cause_color = ""
+        self.successful_trial_index = -1
+        self.trials_trace = []
+        self.actual_duration = 0.0
 
     def construct(self):
         set_seed(self.seed)
         rng = random.Random(self.seed)
-        num_chains = 3
 
-        available_colors = list(COLOR_NAMES)
-        rng.shuffle(available_colors)
-        colors = available_colors[:num_chains]
+        candidate_colors = list(COLOR_NAMES)
+        trial_order = [0, 1, 2]
+        rng.shuffle(trial_order)
 
-        true_cause_row = rng.randint(0, num_chains - 1)
-        self.correct_cause_color = colors[true_cause_row]
+        self.successful_trial_index = rng.randint(0, 2)
+        self.true_cause_color = candidate_colors[trial_order[self.successful_trial_index]]
 
-        y_positions = [2.0, 0.0, -2.0]
+        y_homes = [2.0, 0.0, -2.0]
+        ball_objs = []
+        for i in range(3):
+            c_name = candidate_colors[i]
+            b = Circle(radius=0.35, color=HEX_MAP[c_name], fill_opacity=1.0).move_to(LEFT * 6.0 + UP * y_homes[i])
+            ball_objs.append(b)
+            self.add(b)
 
-        lamp = Circle(radius=0.5, color=GREY, fill_opacity=0.3).move_to(RIGHT * 5.0)
-        lamp_label = Text("LAMP", font_size=18).move_to(RIGHT * 5.0)
-        self.add(lamp, lamp_label)
+        # Shared neutral causal chain
+        trigger_x = -4.0
+        trigger = Circle(radius=0.3, color=GREY, fill_opacity=0.5).move_to(LEFT * 4.0)
+        self.add(trigger)
 
-        chain_elements = []
+        num_inter_comps = self.C - 1
+        comp_nodes = []
+        comp_lines = []
 
-        step_x = 9.0 / (self.C + 1)
+        prev_mobj = trigger
+        step_x = 8.5 / (num_inter_comps + 1) if num_inter_comps > 0 else 8.5
 
-        for row in range(num_chains):
-            y = y_positions[row]
-            c_name = colors[row]
-            c_hex = HEX_MAP.get(c_name, "#FFFFFF")
+        for idx in range(num_inter_comps):
+            cx = trigger_x + (idx + 1) * step_x
+            comp = Square(side_length=0.4, color=GREY, fill_opacity=0.5).move_to(RIGHT * cx)
+            line = Line(prev_mobj.get_right(), comp.get_left(), color=GREY, stroke_width=3)
+            self.add(line, comp)
+            comp_nodes.append(comp)
+            comp_lines.append(line)
+            prev_mobj = comp
 
-            ball = Circle(radius=0.35, color=c_hex, fill_opacity=1.0).move_to(LEFT * 5.5 + UP * y)
-            self.add(ball)
+        lamp = Circle(radius=0.5, color=GREY, fill_opacity=0.3).move_to(RIGHT * 5.5)
+        lamp_label = Text("LAMP", font_size=18).move_to(RIGHT * 5.5)
+        final_line = Line(prev_mobj.get_right(), lamp.get_left(), color=GREY, stroke_width=3)
+        self.add(final_line, lamp, lamp_label)
+        comp_lines.append(final_line)
 
-            blocks = []
-            lines = []
-            num_blocks = self.C if row == true_cause_row else rng.randint(1, max(1, self.C - 1))
+        self.wait(0.3)
+        current_time = 0.3
 
-            prev_pos = LEFT * 5.5 + UP * y
-            for b_idx in range(num_blocks):
-                bx = -5.5 + (b_idx + 1) * step_x
-                block = Square(side_length=0.4, color=GREY, fill_opacity=0.5).move_to(RIGHT * bx + UP * y)
-                line = Line(prev_pos, RIGHT * bx + UP * y, color=GREY, stroke_width=2)
-                self.add(line, block)
-                blocks.append(block)
-                lines.append(line)
-                prev_pos = RIGHT * bx + UP * y
+        for trial_idx in range(3):
+            cand_idx = trial_order[trial_idx]
+            cand_color = candidate_colors[cand_idx]
+            cand_ball = ball_objs[cand_idx]
+            home_pos = LEFT * 6.0 + UP * y_homes[cand_idx]
+            is_succ = (trial_idx == self.successful_trial_index)
 
-            if row == true_cause_row:
-                final_line = Line(prev_pos, RIGHT * 4.5 + UP * y, color=GREY, stroke_width=2)
-                self.add(final_line)
-                lines.append(final_line)
+            # Step 1: Ball touches trigger
+            target_y = 0.6 if y_homes[cand_idx] > 0 else (-0.6 if y_homes[cand_idx] < 0 else 0.0)
+            self.play(cand_ball.animate.move_to(LEFT * 4.0 + UP * target_y), run_time=0.4)
+            current_time += 0.4
 
-            chain_elements.append({
-                "row": row,
-                "color": c_name,
-                "is_true": (row == true_cause_row),
-                "ball": ball,
-                "blocks": blocks,
-                "lines": lines
+            t_touch = round(current_time, 2)
+            self.play(
+                cand_ball.animate.move_to(home_pos),
+                trigger.animate.set_color(YELLOW).set_fill(YELLOW, opacity=0.8),
+                run_time=0.4
+            )
+            current_time += 0.4
+
+            events = []
+
+            if self.C == 1:
+                # Direct transition to outcome (exactly 1 transition)
+                if is_succ:
+                    self.play(
+                        final_line.animate.set_color(YELLOW).set_stroke(width=5),
+                        lamp.animate.set_color(YELLOW).set_fill(YELLOW, opacity=1.0),
+                        run_time=0.5
+                    )
+                    current_time += 0.5
+                    events.append({
+                        "transition_index": 1,
+                        "timestamp": round(current_time, 2),
+                        "cause": f"{cand_color}_ball_contacts_trigger",
+                        "effect": "lamp_turns_on"
+                    })
+                else:
+                    self.play(
+                        final_line.animate.set_color(RED).set_stroke(width=5),
+                        run_time=0.5
+                    )
+                    current_time += 0.5
+                    events.append({
+                        "transition_index": 1,
+                        "timestamp": round(current_time, 2),
+                        "cause": f"{cand_color}_ball_contacts_trigger",
+                        "effect": "blocked_at_lamp"
+                    })
+            else:
+                # Transition 1: Trigger -> Comp 1
+                self.play(
+                    comp_lines[0].animate.set_color(YELLOW).set_stroke(width=5),
+                    comp_nodes[0].animate.set_color(YELLOW).set_fill(YELLOW, opacity=0.8),
+                    run_time=0.4
+                )
+                current_time += 0.4
+                events.append({
+                    "transition_index": 1,
+                    "timestamp": round(current_time, 2),
+                    "cause": f"{cand_color}_ball_contacts_trigger",
+                    "effect": "component_1_activates"
+                })
+
+                # Transitions 2 .. C-1: Comp s -> Comp s+1
+                for step_idx in range(1, num_inter_comps):
+                    self.play(
+                        comp_lines[step_idx].animate.set_color(YELLOW).set_stroke(width=5),
+                        comp_nodes[step_idx].animate.set_color(YELLOW).set_fill(YELLOW, opacity=0.8),
+                        run_time=0.4
+                    )
+                    current_time += 0.4
+                    events.append({
+                        "transition_index": step_idx + 1,
+                        "timestamp": round(current_time, 2),
+                        "cause": f"component_{step_idx}_activates",
+                        "effect": f"component_{step_idx+1}_activates"
+                    })
+
+                # Transition C: Final Comp -> Lamp
+                if is_succ:
+                    self.play(
+                        final_line.animate.set_color(YELLOW).set_stroke(width=5),
+                        lamp.animate.set_color(YELLOW).set_fill(YELLOW, opacity=1.0),
+                        run_time=0.5
+                    )
+                    current_time += 0.5
+                    events.append({
+                        "transition_index": self.C,
+                        "timestamp": round(current_time, 2),
+                        "cause": f"component_{num_inter_comps}_activates",
+                        "effect": "lamp_turns_on"
+                    })
+                else:
+                    self.play(
+                        final_line.animate.set_color(RED).set_stroke(width=5),
+                        run_time=0.5
+                    )
+                    current_time += 0.5
+                    events.append({
+                        "transition_index": self.C,
+                        "timestamp": round(current_time, 2),
+                        "cause": f"component_{num_inter_comps}_activates",
+                        "effect": "blocked_at_lamp"
+                    })
+
+            self.wait(0.4)
+            current_time += 0.4
+
+            # Reset chain before next trial
+            reset_anims = [
+                trigger.animate.set_color(GREY).set_fill(GREY, opacity=0.5),
+                lamp.animate.set_color(GREY).set_fill(GREY, opacity=0.3)
+            ]
+            for node in comp_nodes:
+                reset_anims.append(node.animate.set_color(GREY).set_fill(GREY, opacity=0.5))
+            for line in comp_lines:
+                reset_anims.append(line.animate.set_color(GREY).set_stroke(width=3))
+
+            self.play(*reset_anims, run_time=0.3)
+            current_time += 0.3
+
+            self.trials_trace.append({
+                "trial_index": trial_idx,
+                "initiator_color": cand_color,
+                "is_successful": is_succ,
+                "events": events,
+                "outcome": "lamp_activated" if is_succ else "blocked",
+                "lamp_activated": is_succ
             })
 
         self.wait(0.5)
-
-        for step in range(self.C):
-            anims = []
-            for ch in chain_elements:
-                if step < len(ch["blocks"]):
-                    anims.append(ch["blocks"][step].animate.set_color(YELLOW).set_fill(YELLOW, opacity=0.8))
-                    anims.append(ch["lines"][step].animate.set_color(YELLOW).set_stroke(width=4))
-
-                    if ch["is_true"]:
-                        cause_desc = f"{ch['color']}_ball_initiates_step_{step+1}" if step == 0 else f"step_{step}_activates_step_{step+1}"
-                        effect_desc = f"step_{step+1}_activated"
-                        self.causal_events.append({
-                            "step": step + 1,
-                            "cause": cause_desc,
-                            "effect": effect_desc
-                        })
-
-            if anims:
-                self.play(*anims, run_time=0.6)
-
-        true_ch = [ch for ch in chain_elements if ch["is_true"]][0]
-        self.play(
-            true_ch["lines"][-1].animate.set_color(YELLOW).set_stroke(width=4),
-            lamp.animate.set_color(YELLOW).set_fill(YELLOW, opacity=1.0),
-            run_time=0.6
-        )
-        self.causal_events.append({
-            "step": self.C + 1,
-            "cause": f"step_{self.C}_activates_lamp",
-            "effect": "lamp_turns_on"
-        })
-
-        self.wait(1.0)
+        current_time += 0.5
 
         # Render question text overlay at the end of the video
         render_question_card(
@@ -127,6 +217,8 @@ class CausalAttributionScene(Scene):
             question="Which colored object caused the lamp to turn on?",
             format_instruction="Answer with the color name (e.g. red)."
         )
+        current_time += 3.7
+        self.actual_duration = round(current_time, 2)
 
 class CausalAttributionGenerator(BaseTaskGenerator):
     @property
@@ -158,19 +250,24 @@ class CausalAttributionGenerator(BaseTaskGenerator):
         )
 
         question = "Which colored object caused the lamp to turn on?"
-        exact_answer = scene.correct_cause_color
+        exact_answer = scene.true_cause_color
+
+        # Build steps for execution trace compatibility
+        flat_steps = []
+        for tr in scene.trials_trace:
+            for ev in tr["events"]:
+                flat_steps.append({
+                    "state": {"trial_index": tr["trial_index"], "initiator_color": tr["initiator_color"], "active_step": ev["transition_index"]},
+                    "event": {"type": "causal_transition", "cause": ev["cause"], "effect": ev["effect"], "timestamp": ev["timestamp"]},
+                    "operation": {"action": "evaluate_trial_step", "trial_index": tr["trial_index"]}
+                })
 
         trace_data = {
-            "steps": [
-                {
-                    "state": {"active_step": ev["step"]},
-                    "event": {"type": "causal_propagation", "cause": ev["cause"], "effect": ev["effect"]},
-                    "operation": {"action": "trace_causal_chain", "step": ev["step"]}
-                } for ev in scene.causal_events
-            ],
-            "root_cause": exact_answer,
-            "causal_events": scene.causal_events,
+            "steps": flat_steps,
             "causal_depth": C,
+            "true_cause_color": exact_answer,
+            "successful_trial_index": scene.successful_trial_index,
+            "trials": scene.trials_trace,
             "answer": exact_answer
         }
 
@@ -180,19 +277,19 @@ class CausalAttributionGenerator(BaseTaskGenerator):
             "Let's analyze the video step by step.",
             "",
             "### Scene Description",
-            f"Three parallel colored cause-and-effect chains (depth C={C}) terminating at a lamp.",
+            f"Three candidate colored balls (red, blue, green) testing a shared causal chain (depth C={C}) sequentially.",
             "",
-            "### Step 1: Trace Parallel Causal Chains"
+            "### Step 1: Track Candidate Trials"
         ]
-        for ev in scene.causal_events:
-            cot_lines.append(f"- Step {ev['step']}: [{ev['cause']}] -> [{ev['effect']}]")
+        for tr in scene.trials_trace:
+            cot_lines.append(f"- Trial {tr['trial_index']+1} ({tr['initiator_color']} ball): {len(tr['events'])} transitions -> Outcome: {tr['outcome']}")
 
         cot_lines.extend([
             "",
-            "### Step 2: Evaluate Lamp Activation",
-            f"Only the chain initiated by the {exact_answer} ball reached and activated the lamp.",
+            "### Step 2: Identify Successful Initiator",
+            f"Only Trial {scene.successful_trial_index+1} ({exact_answer} ball) activated the lamp.",
             "",
-            "### Step 3: Identify Root Cause",
+            "### Step 3: Derive Root Cause",
             f"Root cause object: {exact_answer}",
             "",
             f"\\boxed{{{exact_answer}}}"
@@ -213,7 +310,16 @@ class CausalAttributionGenerator(BaseTaskGenerator):
             sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
-        duration = round(0.5 + C * 0.6 + 2.2 + 3.7, 2)
+
+        # Get actual rendered video duration via ffprobe or scene.actual_duration
+        rendered_duration = scene.actual_duration
+        if dest_video.exists():
+            try:
+                cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprintwrappers=1:nokey=1", str(dest_video)]
+                res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                rendered_duration = round(float(res.stdout.strip()), 2)
+            except Exception:
+                pass
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -229,7 +335,7 @@ class CausalAttributionGenerator(BaseTaskGenerator):
             executable_trace=trace_data,
             cot_text=cot_text,
             generation_config={"resolution": resolution, "fps": fps},
-            duration=duration,
+            duration=rendered_duration,
             fps=fps,
             resolution=resolution,
             checksum=checksum
