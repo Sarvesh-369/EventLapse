@@ -16,8 +16,8 @@ from eventlapse.evaluation.exact_match import compute_exact_match
 
 @click.command()
 @click.option("--provider", default="google", help="Model provider")
-@click.option("--model-name", default="gemini-3.5-flash", help="Model identifier")
-@click.option("--input-mode", default="native_video", help="Input mode: native_video, frames_2fps, frames_10fps")
+@click.option("--model-name", default="gemini-2.0-flash", help="Model identifier")
+@click.option("--input-mode", default="native_video", help="Input mode: native_video, frames_1fps, frames_2fps, frames_4fps, frames_8fps, frames_10fps, frames_16fps, oracle_evidence")
 @click.option("--prompt-condition", default="structured_trace", help="Prompt condition: direct, structured_trace, multi_turn_verification, thinking")
 @click.option("--experiment-group", default="group_1", help="Experiment group identifier")
 @click.option("--resume/--overwrite", default=True, help="Resume existing experiment run without rerunning completed calls")
@@ -25,7 +25,7 @@ from eventlapse.evaluation.exact_match import compute_exact_match
 @click.option("--concurrency", default=1, type=int, help="Concurrency level")
 @click.option("--dry-run", is_flag=True, help="Dry run without calling model API")
 @click.option("--seed-start", default=0, help="Filter start seed")
-@click.option("--seed-end", default=19, help="Filter end seed")
+@click.option("--seed-end", default=29, help="Filter end seed")
 def main(
     provider: str,
     model_name: str,
@@ -50,6 +50,7 @@ def main(
         sys.exit(1)
 
     outputs_dir = get_outputs_dir()
+    outputs_dir.mkdir(parents=True, exist_ok=True)
     run_id = f"{provider}_{model_name}_{input_mode}_{prompt_condition}"
     output_file = outputs_dir / f"results_{run_id}.jsonl"
 
@@ -76,7 +77,7 @@ def main(
     if dry_run:
         logger.info("[DRY RUN MODE] Simulating execution without calling Model APIs.")
         for item in samples[:5]:
-            logger.info(f"Would process sample: {item['sample_id']} ({item['task_name']})")
+            logger.info(f"Would process sample: {item['sample_id']} ({item['task_name']}) | Mode: {input_mode} | Condition: {prompt_condition}")
         return
 
     config = ModelConfig(provider=provider, model_name=model_name)
@@ -121,6 +122,12 @@ def main(
                 "resolved_model": model_name,
                 "input_mode": input_mode,
                 "prompt_condition": prompt_condition,
+                "num_frames": res["num_frames"],
+                "prompt_tokens": res["prompt_tokens"],
+                "completion_tokens": res["completion_tokens"],
+                "total_tokens": res["total_tokens"],
+                "estimated_cost_usd": res["estimated_cost_usd"],
+                "latency_sec": res["latency_sec"],
                 "question": item["question"],
                 "ground_truth_answer": item["exact_answer"],
                 "raw_model_response": res["raw_response"],
@@ -129,7 +136,6 @@ def main(
                 "parser_validity": res["is_valid"],
                 "exact_match_result": exact_match,
                 "token_usage": res["token_usage"],
-                "latency": res["latency_sec"],
                 "error_message": res["error"]
             }
 
