@@ -1,4 +1,5 @@
 import random
+import hashlib
 import shutil
 import json
 import subprocess
@@ -30,7 +31,8 @@ class CausalAttributionScene(Scene):
 
     def construct(self):
         set_seed(self.seed)
-        rng = random.Random(self.seed)
+        sample_hash = int(hashlib.md5(f"{self.seed}_{self.C}".encode()).hexdigest(), 16)
+        rng = random.Random(sample_hash)
 
         candidate_colors = list(COLOR_NAMES)
         trial_order = [0, 1, 2]
