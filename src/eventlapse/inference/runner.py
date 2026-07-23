@@ -71,8 +71,10 @@ def run_single_inference(
     elif input_mode == "oracle_evidence":
         # Extract oracle evidence frames around ground truth event timestamps
         if trace_events is None:
-            # Look for ground truth trace JSON alongside video
-            trace_json_path = video_path.parent.parent / "traces" / video_path.parent.name / f"{video_path.stem}_trace.json"
+            trace_json_path = video_path.parent.parent.parent / "traces" / video_path.parent.name / f"{video_path.stem}_trace.json"
+            if not trace_json_path.exists():
+                trace_json_path = video_path.parent.parent / "traces" / video_path.parent.name / f"{video_path.stem}_trace.json"
+
             if trace_json_path.exists():
                 with open(trace_json_path, "r") as tf:
                     t_data = json.load(tf)

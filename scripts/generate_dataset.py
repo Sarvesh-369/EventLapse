@@ -62,13 +62,15 @@ def main(num_seeds: int, seed_start: int, seed_end: int, tasks: str, output_dir:
                 )
                 logger.info(f"Generated sample {sample.sample_id} -> {sample.video_path.name}")
 
+                rel_video_path = f"videos/{sample.task_name}/{sample.video_path.name}"
+
                 manifest_entries.append({
                     "sample_id": sample.sample_id,
                     "task_name": sample.task_name,
                     "control_parameter_name": sample.control_parameter_name,
                     "control_parameter_value": sample.control_parameter_value,
                     "seed": sample.seed,
-                    "video_path": str(sample.video_path),
+                    "video_path": rel_video_path,
                     "question": sample.question,
                     "exact_answer": sample.exact_answer,
                     "duration": sample.duration,

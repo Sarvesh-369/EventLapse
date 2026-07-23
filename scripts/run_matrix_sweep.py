@@ -1,47 +1,39 @@
 #!/usr/bin/env python3
+import os
 import sys
 import json
 import time
 import click
 from pathlib import Path
+from typing import List
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from eventlapse.utils.paths import get_data_dir, get_outputs_dir
+from eventlapse.utils.paths import get_data_dir, get_outputs_dir, ensure_directories
 from eventlapse.utils.logging import logger
-from eventlapse.models.load_model import load_model
 from eventlapse.models.base import ModelConfig
+from eventlapse.models.load_model import load_model
 from eventlapse.inference.runner import run_single_inference
 from eventlapse.evaluation.exact_match import compute_exact_match
 
 @click.command()
-@click.option("--provider", default="google", help="Model provider: google, openai, anthropic, bedrock, fireworks, vllm")
-@click.option("--model-name", default="gemini-2.0-flash", help="Model identifier (e.g. gemini-2.0-flash, gpt-4o, Qwen/Qwen2-VL-7B-Instruct)")
-@click.option("--input-mode", default="native_video", help="Input mode: native_video, frames_1fps, frames_2fps, frames_4fps, frames_8fps, frames_16fps, oracle_evidence")
-@click.option("--prompt-condition", default="structured_trace", help="Prompt condition: direct, structured_trace, thinking")
-@click.option("--task", default="all", help="Target task or 'all'")
-@click.option("--vllm-url", default=None, help="Optional vLLM server base URL override (e.g. http://localhost:8000/v1)")
-@click.option("--resume/--overwrite", default=True, help="Resume existing experiment run")
-@click.option("--dry-run", is_flag=True, help="Dry run without executing API calls")
-def main(
-    provider: str,
-    model_name: str,
-    input_mode: str,
-    prompt_condition: str,
-    task: str,
-    vllm_url: str,
-    resume: bool,
-    dry_run: bool
-):
+@click.option("--provider", default="google", help="Model provider (google, openai, anthropic, vllm, propensity)")
+@click.option("--model-name", default="gemini-2.0-flash", help="Model identifier or <provider>/<model_name>")
+@click.option("--input-mode", default="native_video", help="native_video, frames_1fps..16fps, oracle_evidence")
+@click.option("--prompt-condition", default="structured_trace", help="direct, structured_trace, multi_turn_verification, thinking, role_prompting")
+@click.option("--task", default="all", help="Task name or 'all'")
+@click.option("--resume", is_flag=True, help="Resume previous run")
+@click.option("--dry-run", is_flag=True, help="Dry run simulation")
+@click.option("--vllm-url", default=None, help="Override VLLM base URL")
+def main(provider: str, model_name: str, input_mode: str, prompt_condition: str, task: str, resume: bool, dry_run: bool, vllm_url: str):
     """
-    Executes N x F parametric matrix evaluation sweep across models, tracking input/output tokens,
-    API cost ($USD), latency (sec), supplied frame counts, and MORSE exact match results.
+    Run N x F matrix evaluation sweep for Event Counting tasks.
     """
+    ensure_directories()
     data_dir = get_data_dir()
     manifest_path = data_dir / "manifest.jsonl"
 
     if not manifest_path.exists():
-        # Fallback to sample_data manifest if data/ manifest does not exist
         sample_manifest = Path("sample_data/manifest.jsonl")
         if sample_manifest.exists():
             manifest_path = sample_manifest
@@ -65,7 +57,6 @@ def main(
                     existing_sample_ids.add(r.get("sample_id"))
         logger.info(f"Resuming matrix sweep {run_id}. Found {len(existing_sample_ids)} already completed samples.")
 
-    # Load dataset items matching task filter
     samples = []
     with open(manifest_path, "r") as f:
         for line in f:
@@ -83,7 +74,6 @@ def main(
         return
 
     if vllm_url and provider == "vllm":
-        import os
         os.environ["VLLM_BASE_URL"] = vllm_url
 
     config = ModelConfig(provider=provider, model_name=model_name)
@@ -97,7 +87,18 @@ def main(
             if resume and sid in existing_sample_ids:
                 continue
 
-            video_path = Path(item["video_path"])
+            raw_path = Path(item["video_path"])
+            if raw_path.exists():
+                video_path = raw_path
+            elif (manifest_path.parent / raw_path).exists():
+                video_path = manifest_path.parent / raw_path
+            elif (data_dir / raw_path).exists():
+                video_path = data_dir / raw_path
+            elif (data_dir / "videos" / item["task_name"] / f"{sid}.mp4").exists():
+                video_path = data_dir / "videos" / item["task_name"] / f"{sid}.mp4"
+            else:
+                video_path = raw_path # fallback
+
             logger.info(f"Running matrix evaluation on {sid} ({item['task_name']})...")
 
             res = run_single_inference(
@@ -144,7 +145,7 @@ def main(
             out_f.write(json.dumps(row) + "\n")
             out_f.flush()
 
-    logger.info(f"Matrix sweep finished. Executed {executed_calls} model calls. Output written to {output_file}")
+    logger.info(f"Matrix sweep completed for {executed_calls} samples. Results saved to {output_file}")
 
 if __name__ == "__main__":
     main()
