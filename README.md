@@ -1,6 +1,6 @@
-# EventLapse: Trace-Grounded Parametric Profiling of Temporal Capabilities in Frontier Video LLMs
+# EventLapse: Where Do Frontier Video LLMs Break? Trace-Grounded Profiling of Temporal Capability Boundaries
 
-> **Paper Title:** *EventLapse: Where Do Frontier Video LLMs Lose Events? Trace-Grounded Parametric Profiling of Temporal Capabilities*
+> **Paper Title:** *EventLapse: Where Do Frontier Video LLMs Break? Trace-Grounded Profiling of Temporal Capability Boundaries*
 
 EventLapse is a research framework for profiling and diagnosing the temporal reasoning capabilities of frontier Video-Language Models (VLMs) across **7 synthetic video tasks** rendered with Manim Community Edition, using the **MORSE** executable trace evaluation methodology with Trace Precision / Recall / F1 scoring and operational capability boundary estimation.
 
@@ -242,7 +242,7 @@ If you use EventLapse in your research, please cite:
 
 ```bibtex
 @article{eventlapse2026,
-  title={EventLapse: Where Do Frontier Video LLMs Lose Events? Trace-Grounded Parametric Profiling of Temporal Capabilities},
+  title={EventLapse: Where Do Frontier Video LLMs Break? Trace-Grounded Profiling of Temporal Capability Boundaries},
   author={},
   year={2026}
 }
