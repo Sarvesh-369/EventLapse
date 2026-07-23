@@ -1,39 +1,78 @@
 #!/usr/bin/env bash
 set -e
 
+# Usage: ./scripts/run_all_experiments.sh [PROVIDER] [MODEL_NAME]
+# Example: ./scripts/run_all_experiments.sh google gemini-2.0-flash
+# Example: ./scripts/run_all_experiments.sh propensity gemini/gemini-3.1-pro-preview
+# Example: ./scripts/run_all_experiments.sh vllm Qwen/Qwen2-VL-7B-Instruct
+
+PROVIDER=${1:-"google"}
+MODEL_NAME=${2:-"gemini-2.0-flash"}
+
 echo "=========================================================="
-echo " EventLapse: Master Experiment Execution Pipeline"
+echo " EventLapse: Master Pipeline for Model: $PROVIDER / $MODEL_NAME"
 echo "=========================================================="
 
-# Ensure script is run from project root or scripts directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
 echo "Project Root: $PROJECT_ROOT"
 
-# Step 1: Check available models and provider capabilities
-echo "[Step 1] Checking available models and provider capabilities..."
-python3 scripts/check_available_models.py --provider google
-
-# Step 2: Validate dataset (or generate smoke test dataset if missing)
+# Ensure dataset exists, generate smoke test dataset if missing
 if [ ! -f "data/manifest.jsonl" ]; then
-    echo "[Step 2] Generating smoke test dataset (2 seeds per task)..."
+    echo "[Data Setup] Manifest not found. Generating dataset (2 seeds per setting)..."
     python3 scripts/generate_dataset.py --num-seeds 2 --tasks all
 fi
 
-echo "[Step 2] Validating dataset integrity..."
-python3 scripts/validate_dataset.py
-
-# Step 3: Run Group 1 Capability Boundaries Experiment Sweep (Dry Run default)
-echo "[Step 3] Running capability boundary experiment sweep (Dry Run)..."
-python3 scripts/run_experiment.py --provider google --model-name gemini-3.5-flash --input-mode native_video --prompt-condition structured_trace --dry-run
-
-# Step 4: Aggregate results and generate paper figures
-echo "[Step 4] Aggregating results and generating summary plots..."
-python3 scripts/aggregate_results.py || true
-python3 scripts/make_figures.py || true
+echo "=========================================================="
+echo " [Experiment 1] Full N x F Matrix Capability Boundary Sweep"
+echo "=========================================================="
+python3 scripts/run_matrix_sweep.py \
+  --provider "$PROVIDER" \
+  --model-name "$MODEL_NAME" \
+  --input-mode native_video \
+  --prompt-condition structured_trace
 
 echo "=========================================================="
-echo " Pipeline execution completed successfully!"
+echo " [Experiment 2] Frame Sampling Density Interventions"
+echo "=========================================================="
+for mode in native_video frames_1fps frames_2fps frames_4fps frames_8fps frames_10fps frames_16fps; do
+  echo "--- Running Frame Density Mode: $mode ---"
+  python3 scripts/run_matrix_sweep.py \
+    --provider "$PROVIDER" \
+    --model-name "$MODEL_NAME" \
+    --input-mode "$mode" \
+    --prompt-condition structured_trace
+done
+
+echo "=========================================================="
+echo " [Experiment 3] Oracle Keyframe Evidence Interventions"
+echo "=========================================================="
+python3 scripts/run_matrix_sweep.py \
+  --provider "$PROVIDER" \
+  --model-name "$MODEL_NAME" \
+  --input-mode oracle_evidence \
+  --prompt-condition structured_trace
+
+echo "=========================================================="
+echo " [Experiment 4] Prompting & Reasoning Mode Interventions"
+echo "=========================================================="
+for cond in direct structured_trace multi_turn_verification thinking role_prompting; do
+  echo "--- Running Prompting Strategy: $cond ---"
+  python3 scripts/run_matrix_sweep.py \
+    --provider "$PROVIDER" \
+    --model-name "$MODEL_NAME" \
+    --input-mode native_video \
+    --prompt-condition "$cond"
+done
+
+echo "=========================================================="
+echo " [Experiment 5] Result Aggregation & 2D Matrix Heatmaps"
+echo "=========================================================="
+python3 scripts/aggregate_results.py
+python3 scripts/make_matrix_heatmaps.py
+
+echo "=========================================================="
+echo " All 5 Experiments Completed for Model: $PROVIDER / $MODEL_NAME"
 echo "=========================================================="

@@ -4,7 +4,7 @@
 
 EventLapse is a research framework for profiling and diagnosing the temporal reasoning capabilities of frontier Video-Language Models (VLMs) on **Event Counting** across **3 synthetic video domains** rendered with Manim Community Edition, using the **MORSE** executable trace evaluation methodology with Trace Precision / Recall / F1 scoring and operational capability boundary estimation.
 
-> 📖 **Detailed Experiments Guide:** See [EXPERIMENTS.md](file:///Users/sarvesh/Documents/VLM_failures/EventLapse/EXPERIMENTS.md) for full technical documentation on the $N \times F$ matrix sweep framework, PropensityBench gateway usage, vLLM hosting, interventions, error taxonomy, and metrics.
+> 📖 **Detailed Experiments Guide:** See [EXPERIMENTS.md](file:///Users/sarvesh/Documents/VLM_failures/EventLapse/EXPERIMENTS.md) for full technical details on each of the 5 paper experiments.
 
 ---
 
@@ -48,12 +48,29 @@ Videos are constant-duration per task ($24.0\text{s}$) to prevent total duration
 
 ---
 
-## 🧪 Running Experiments
+## ⚡ Master Script: Run All 5 Experiments for Any Model
+
+Run all 5 experiments sequentially for a model with a single command:
+
+```bash
+# Run all 5 experiments for Google Gemini 2.0 Flash
+./scripts/run_all_experiments.sh google gemini-2.0-flash
+
+# Run all 5 experiments via PropensityBench Gateway
+./scripts/run_all_experiments.sh propensity gemini/gemini-3.1-pro-preview
+
+# Run all 5 experiments for local vLLM open-source model
+./scripts/run_all_experiments.sh vllm Qwen/Qwen2-VL-7B-Instruct
+```
+
+---
+
+## 🧪 Step-by-Step Experiment Workflows
 
 ### 1. Generate Synthetic Dataset ($N \times F$)
 
 ```bash
-# Quick test dataset (2 seeds per setting — fast)
+# Quick test dataset (2 seeds per setting)
 python3 scripts/generate_dataset.py --num-seeds 2 --tasks all
 
 # Full benchmark dataset (20 seeds per setting)
@@ -66,58 +83,27 @@ Outputs are saved to:
 - `data/gt/{domain}/` — Ground-truth answer files
 - `data/manifest.jsonl` — Dataset index manifest
 
-### 2. Run $N \times F$ Matrix Evaluation Sweeps
+### 2. Individual Experiment Commands
 
 ```bash
-# Google Gemini 2.0 Flash — native video
-python3 scripts/run_matrix_sweep.py \
-  --provider google \
-  --model-name gemini-2.0-flash \
-  --input-mode native_video \
-  --prompt-condition structured_trace
+# Experiment 1: Full N x F Matrix Sweep
+python3 scripts/run_matrix_sweep.py --provider google --model-name gemini-2.0-flash --input-mode native_video --prompt-condition structured_trace
 
-# PropensityBench Gateway Call (Shayan's spec format: <provider>/<original_model_name>)
-python3 scripts/run_matrix_sweep.py \
-  --provider propensity \
-  --model-name gemini/gemini-3.1-pro-preview \
-  --input-mode native_video \
-  --prompt-condition structured_trace
-```
-
-### 3. Frame-Density Intervention Sweeps
-
-Run the model across 7 frame sampling rates (native video, 1 FPS, 2 FPS, 4 FPS, 8 FPS, 10 FPS, 16 FPS):
-
-```bash
+# Experiment 2: Frame Sampling Density Sweep (Native, 1, 2, 4, 8, 10, 16 FPS)
 for mode in native_video frames_1fps frames_2fps frames_4fps frames_8fps frames_10fps frames_16fps; do
-  python3 scripts/run_matrix_sweep.py \
-    --provider google \
-    --model-name gemini-2.0-flash \
-    --input-mode ${mode} \
-    --prompt-condition structured_trace
+  python3 scripts/run_matrix_sweep.py --provider google --model-name gemini-2.0-flash --input-mode ${mode} --prompt-condition structured_trace
 done
-```
 
-### 4. Prompting & Reasoning Mode Interventions
+# Experiment 3: Oracle Keyframe Evidence Sweep
+python3 scripts/run_matrix_sweep.py --provider google --model-name gemini-2.0-flash --input-mode oracle_evidence --prompt-condition structured_trace
 
-```bash
-# Evaluate all 5 prompting conditions (direct, structured_trace, multi_turn_verification, thinking, role_prompting)
+# Experiment 4: Prompting Strategy Sweep (5 conditions)
 for cond in direct structured_trace multi_turn_verification thinking role_prompting; do
-  python3 scripts/run_matrix_sweep.py \
-    --provider google \
-    --model-name gemini-2.0-flash \
-    --input-mode native_video \
-    --prompt-condition ${cond}
+  python3 scripts/run_matrix_sweep.py --provider google --model-name gemini-2.0-flash --input-mode native_video --prompt-condition ${cond}
 done
-```
 
-### 5. Aggregate Results & Generate 2D Heatmap Figures
-
-```bash
-# Aggregate token usage, costs ($USD), latencies, and frame counts
+# Experiment 5: Aggregate Results & Generate 2D Heatmaps
 python3 scripts/aggregate_results.py
-
-# Generate 2D N x F matrix accuracy heatmaps
 python3 scripts/make_matrix_heatmaps.py
 ```
 
@@ -131,12 +117,8 @@ Host any open-source Vision-Language Model using [vLLM](https://github.com/vllm-
 # 1. Launch vLLM server
 vllm serve Qwen/Qwen2-VL-7B-Instruct --port 8000
 
-# 2. Run evaluation sweep
-python3 scripts/run_matrix_sweep.py \
-  --provider vllm \
-  --model-name Qwen/Qwen2-VL-7B-Instruct \
-  --input-mode frames_2fps \
-  --prompt-condition structured_trace
+# 2. Run all 5 experiments against local vLLM
+./scripts/run_all_experiments.sh vllm Qwen/Qwen2-VL-7B-Instruct
 ```
 
 ---
@@ -162,13 +144,15 @@ EventLapse/
 ├── configs/               # Model, generation, task, and experiment YAML configs
 ├── data/                  # Dataset outputs: videos/, traces/, gt/, manifest.jsonl
 ├── sample_data/           # Single-seed sample dataset for evaluation testing
-├── scripts/               # Master runner scripts, dataset generation, matrix sweeps, and heatmaps
+├── scripts/
+│   ├── run_all_experiments.sh  # Master script to run all 5 experiments for a model
+│   ├── run_matrix_sweep.py     # N x F matrix sweep execution engine
+│   ├── generate_dataset.py     # Event Counting dataset generator
+│   ├── aggregate_results.py    # Consolidate results, token usage, and costs ($USD)
+│   └── make_matrix_heatmaps.py # 2D N x F matrix heatmap plotter
 ├── src/eventlapse/
 │   ├── generation/        # Event Counting Manim generators (bounce_ball, blinking, state_machine)
-│   ├── models/
-│   │   ├── base.py        # BaseVideoModel abstract interface
-│   │   ├── load_model.py  # Provider dispatch & model spec parser
-│   │   └── adapters/      # Adapters: gemini, openai, anthropic, bedrock, fireworks, vllm, propensity_client
+│   ├── models/            # Model dispatch and adapters (gemini, openai, anthropic, vllm, propensity)
 │   ├── inference/         # Prompts (5 strategies), runner, and response parser
 │   ├── interventions/     # Frame extraction (1–16 fps), oracle keyframe evidence, prompting controls
 │   ├── evaluation/        # Exact match, Trace F1, Wilson 95% CIs, operational boundaries, MORSE evaluator
