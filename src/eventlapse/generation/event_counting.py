@@ -106,6 +106,21 @@ class EventCountingScene(Scene):
 
             current_target_positive = not current_target_positive
 
+        # Final move after bounce N: return to interior space away from walls
+        end_offset = rng.uniform(-0.5 * wall_dist, 0.5 * wall_dist)
+        if orientation == 0:
+            end_target = RIGHT * end_offset
+            last_wall_val = (RIGHT if not current_target_positive else LEFT) * (wall_dist - ball_radius - 0.1)
+            dist_end = abs(end_target[0] - last_wall_val[0])
+        else:
+            end_target = UP * end_offset
+            last_wall_val = (UP if not current_target_positive else DOWN) * (wall_dist - ball_radius - 0.1)
+            dist_end = abs(end_target[1] - last_wall_val[1])
+
+        final_leg_duration = max(0.3, dist_end / 3.0)
+        self.play(ball.animate.move_to(end_target), run_time=final_leg_duration)
+        current_time += final_leg_duration
+
         # Calculate remaining wait time to enforce FIXED_TASK_DURATION (20.0s)
         question_duration = 3.7
         remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time - question_duration)
