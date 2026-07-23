@@ -32,7 +32,7 @@ group_2_trace_diagnosis:
 
 group_3_interventions:
   frame_density:
-    input_modes: [native_video, frames_2fps, frames_10fps]
+    input_modes: [native_video, frames_1fps, frames_2fps, frames_4fps, frames_8fps, frames_16fps]
     target_tasks: [event_counting, event_frequency, duration_comparison]
   oracle_evidence:
     target_tasks: all
