@@ -18,6 +18,7 @@ HEX_MAP = {
     "blue": "#4444FF",
     "green": "#44FF44"
 }
+FIXED_TASK_DURATION = 18.0
 
 class CausalAttributionScene(Scene):
     def __init__(self, C: int, seed: int, **kwargs):
@@ -27,7 +28,7 @@ class CausalAttributionScene(Scene):
         self.true_cause_color = ""
         self.successful_trial_index = -1
         self.trials_trace = []
-        self.actual_duration = 0.0
+        self.actual_duration = FIXED_TASK_DURATION
 
     def construct(self):
         set_seed(self.seed)
@@ -210,8 +211,11 @@ class CausalAttributionScene(Scene):
                 "lamp_activated": is_succ
             })
 
-        self.wait(0.5)
-        current_time += 0.5
+        # Calculate remaining wait time to enforce FIXED_TASK_DURATION (18.0s)
+        question_duration = 3.7
+        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time - question_duration)
+        self.wait(remaining_wait)
+        current_time += remaining_wait
 
         # Render question text overlay at the end of the video
         render_question_card(
@@ -219,7 +223,7 @@ class CausalAttributionScene(Scene):
             question="Which colored object caused the lamp to turn on?",
             format_instruction="Answer with the color name (e.g. red)."
         )
-        current_time += 3.7
+        current_time += question_duration
         self.actual_duration = round(current_time, 2)
 
 class CausalAttributionGenerator(BaseTaskGenerator):
@@ -313,7 +317,6 @@ class CausalAttributionGenerator(BaseTaskGenerator):
         )
         checksum = compute_file_checksum(dest_video)
 
-        # Get actual rendered video duration via ffprobe or scene.actual_duration
         rendered_duration = scene.actual_duration
         if dest_video.exists():
             try:

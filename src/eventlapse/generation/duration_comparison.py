@@ -1,5 +1,6 @@
 import random
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Dict, Any, List
 from manim import Scene, Circle, Square, Rectangle, LEFT, RIGHT, UP, DOWN
@@ -8,6 +9,8 @@ from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
 from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
 from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
+
+FIXED_TASK_DURATION = 13.0
 
 class DurationComparisonScene(Scene):
     def __init__(self, r: float, seed: int, **kwargs):
@@ -18,6 +21,7 @@ class DurationComparisonScene(Scene):
         self.longer_duration = 2.0 * r
         self.events = []
         self.longer_object = ""
+        self.actual_duration = FIXED_TASK_DURATION
 
     def construct(self):
         set_seed(self.seed)
@@ -48,6 +52,7 @@ class DurationComparisonScene(Scene):
             run_time=entry_time
         )
         t_enter = 0.5 + entry_time
+        current_time = t_enter
 
         self.events.append({"object": "top object", "event": "entry", "timestamp": round(t_enter, 2)})
         self.events.append({"object": "bottom object", "event": "entry", "timestamp": round(t_enter, 2)})
@@ -63,6 +68,7 @@ class DurationComparisonScene(Scene):
             t_exit_btm = t_enter + dur_btm
             self.play(obj_btm.animate.move_to(RIGHT * 5.0 + DOWN * 1.5), run_time=1.0)
             self.events.append({"object": "bottom object", "event": "exit", "timestamp": round(t_exit_btm, 2), "dwell": dur_btm})
+            current_time = t_exit_btm + 1.0
         else:
             self.wait(dur_btm)
             t_exit_btm = t_enter + dur_btm
@@ -74,8 +80,13 @@ class DurationComparisonScene(Scene):
             t_exit_top = t_enter + dur_top
             self.play(obj_top.animate.move_to(RIGHT * 5.0 + UP * 1.5), run_time=1.0)
             self.events.append({"object": "top object", "event": "exit", "timestamp": round(t_exit_top, 2), "dwell": dur_top})
+            current_time = t_exit_top + 1.0
 
-        self.wait(0.5)
+        # Calculate remaining wait time to enforce FIXED_TASK_DURATION (13.0s)
+        question_duration = 3.7
+        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time - question_duration)
+        self.wait(remaining_wait)
+        current_time += remaining_wait
 
         # Render question text overlay at the end of the video
         render_question_card(
@@ -83,6 +94,8 @@ class DurationComparisonScene(Scene):
             question="Which object remained stopped longer?",
             format_instruction="Answer with 'top object' or 'bottom object'."
         )
+        current_time += question_duration
+        self.actual_duration = round(current_time, 2)
 
 class DurationComparisonGenerator(BaseTaskGenerator):
     @property
@@ -168,7 +181,15 @@ class DurationComparisonGenerator(BaseTaskGenerator):
             sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
-        duration = round(3.5 + 2.0 * r + 3.7, 2)
+
+        rendered_duration = scene.actual_duration
+        if dest_video.exists():
+            try:
+                cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprintwrappers=1:nokey=1", str(dest_video)]
+                res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                rendered_duration = round(float(res.stdout.strip()), 2)
+            except Exception:
+                pass
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -184,7 +205,7 @@ class DurationComparisonGenerator(BaseTaskGenerator):
             executable_trace=trace_data,
             cot_text=cot_text,
             generation_config={"resolution": resolution, "fps": fps},
-            duration=duration,
+            duration=rendered_duration,
             fps=fps,
             resolution=resolution,
             checksum=checksum

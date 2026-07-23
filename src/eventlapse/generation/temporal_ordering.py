@@ -1,6 +1,7 @@
 import random
 import math
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Dict, Any, List
 from manim import Scene, Line, Circle, LEFT, RIGHT, UP, DOWN, WHITE
@@ -11,6 +12,7 @@ from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
 COLOR_NAMES = ["red", "blue", "green", "yellow", "purple", "orange", "cyan", "magenta", "teal", "pink", "lime", "brown", "gold", "silver", "maroon", "navy"]
+FIXED_TASK_DURATION = 18.0
 
 class TemporalOrderingScene(Scene):
     def __init__(self, L: int, seed: int, **kwargs):
@@ -20,6 +22,7 @@ class TemporalOrderingScene(Scene):
         self.crossing_events = []
         self.queried_k = math.ceil(self.L / 2)
         self.correct_object_color = ""
+        self.actual_duration = FIXED_TASK_DURATION
 
     def construct(self):
         set_seed(self.seed)
@@ -66,7 +69,11 @@ class TemporalOrderingScene(Scene):
             if (rank + 1) == self.queried_k:
                 self.correct_object_color = obj_meta["color_name"]
 
-        self.wait(0.5)
+        # Calculate remaining wait time to enforce FIXED_TASK_DURATION (18.0s)
+        question_duration = 3.7
+        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time - question_duration)
+        self.wait(remaining_wait)
+        current_time += remaining_wait
 
         # Render question text overlay at the end of the video
         render_question_card(
@@ -74,6 +81,8 @@ class TemporalOrderingScene(Scene):
             question=f"Which object crossed the finish line in position {self.queried_k}?",
             format_instruction="Answer with the color name (e.g. red)."
         )
+        current_time += question_duration
+        self.actual_duration = round(current_time, 2)
 
 class TemporalOrderingGenerator(BaseTaskGenerator):
     @property
@@ -157,7 +166,15 @@ class TemporalOrderingGenerator(BaseTaskGenerator):
             sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
-        duration = round(0.5 + L * 1.2 + 3.7, 2)
+
+        rendered_duration = scene.actual_duration
+        if dest_video.exists():
+            try:
+                cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprintwrappers=1:nokey=1", str(dest_video)]
+                res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                rendered_duration = round(float(res.stdout.strip()), 2)
+            except Exception:
+                pass
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -173,7 +190,7 @@ class TemporalOrderingGenerator(BaseTaskGenerator):
             executable_trace=trace_data,
             cot_text=cot_text,
             generation_config={"resolution": resolution, "fps": fps},
-            duration=duration,
+            duration=rendered_duration,
             fps=fps,
             resolution=resolution,
             checksum=checksum

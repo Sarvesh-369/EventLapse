@@ -1,6 +1,7 @@
 import random
 import hashlib
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Dict, Any, List
 from manim import Scene, Circle, Rectangle, Star, VGroup, RIGHT, UP, DOWN, YELLOW, GREEN
@@ -11,6 +12,7 @@ from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
 COLOR_NAMES = ["red", "blue", "green"]
+FIXED_TASK_DURATION = 17.0
 
 class LongTermDependencyScene(Scene):
     def __init__(self, D: int, seed: int, **kwargs):
@@ -21,6 +23,7 @@ class LongTermDependencyScene(Scene):
         self.marked_parcel_id = 0
         self.final_parcel_in_bin_id = -1
         self.entered_delivery_bin = False
+        self.actual_duration = FIXED_TASK_DURATION
 
     def construct(self):
         set_seed(self.seed)
@@ -100,9 +103,13 @@ class LongTermDependencyScene(Scene):
 
         winning_mobject = parcels[entering_parcel_idx]["mobject"]
         self.play(winning_mobject.animate.move_to(RIGHT * 3.0 + DOWN * 2.0), run_time=0.8)
-
         current_time += 0.8
-        self.wait(0.5)
+
+        # Calculate remaining wait time to enforce FIXED_TASK_DURATION (17.0s)
+        question_duration = 3.7
+        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time - question_duration)
+        self.wait(remaining_wait)
+        current_time += remaining_wait
 
         # Render question text overlay at the end of the video
         render_question_card(
@@ -110,6 +117,8 @@ class LongTermDependencyScene(Scene):
             question="Did the parcel marked at the beginning enter the delivery bin?",
             format_instruction="Answer with 'yes' or 'no'."
         )
+        current_time += question_duration
+        self.actual_duration = round(current_time, 2)
 
 class LongTermDependencyGenerator(BaseTaskGenerator):
     @property
@@ -197,7 +206,15 @@ class LongTermDependencyGenerator(BaseTaskGenerator):
             sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
-        duration = round(1.4 + D * 0.6 + 5.0, 2)
+
+        rendered_duration = scene.actual_duration
+        if dest_video.exists():
+            try:
+                cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprintwrappers=1:nokey=1", str(dest_video)]
+                res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                rendered_duration = round(float(res.stdout.strip()), 2)
+            except Exception:
+                pass
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 
@@ -213,7 +230,7 @@ class LongTermDependencyGenerator(BaseTaskGenerator):
             executable_trace=trace_data,
             cot_text=cot_text,
             generation_config={"resolution": resolution, "fps": fps},
-            duration=duration,
+            duration=rendered_duration,
             fps=fps,
             resolution=resolution,
             checksum=checksum
