@@ -14,8 +14,10 @@ class VLLMAdapter(BaseVideoModel):
     """
     def __init__(self, config: ModelConfig):
         super().__init__(config)
-        self.base_url = os.environ.get("VLLM_BASE_URL", os.environ.get("OPENAI_BASE_URL", "http://localhost:8000/v1")).rstrip("/")
-        self.api_key = os.environ.get("VLLM_API_KEY", os.environ.get("OPENAI_API_KEY", "EMPTY"))
+        self.base_url = os.environ.get("VLLM_BASE_URL", "http://localhost:8000/v1").rstrip("/")
+        # vLLM local server does not require API authentication.
+        # If you deploy behind a proxy with auth, set VLLM_API_KEY in your environment.
+        self.api_key = os.environ.get("VLLM_API_KEY", None)
 
     @property
     def supports_native_video(self) -> bool:
@@ -46,12 +48,10 @@ class VLLMAdapter(BaseVideoModel):
         start_t = time.time()
         endpoint = f"{self.base_url}/chat/completions"
 
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
-        # Encode video into base64 data url if needed
         try:
             with open(video_path, "rb") as vf:
                 b64_video = base64.b64encode(vf.read()).decode("utf-8")
@@ -110,12 +110,10 @@ class VLLMAdapter(BaseVideoModel):
         start_t = time.time()
         endpoint = f"{self.base_url}/chat/completions"
 
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
-        content = [{"type": "text", "text": prompt}]
 
         for fp in frame_paths:
             try:

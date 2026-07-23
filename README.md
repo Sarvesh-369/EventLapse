@@ -31,7 +31,7 @@ Set API keys for the providers you intend to use:
 | Anthropic | `ANTHROPIC_API_KEY` | Frame sequences only |
 | AWS Bedrock | AWS credentials | Frame sequences only |
 | Fireworks AI | `FIREWORKS_API_KEY` | Frame sequences only |
-| **vLLM (open-source)** | `VLLM_BASE_URL` + `VLLM_API_KEY` | See §Open-Source Models via vLLM |
+| **vLLM (open-source)** | `VLLM_BASE_URL` (no API key needed) | See §Open-Source Models via vLLM |
 
 ---
 
@@ -169,8 +169,9 @@ vllm serve OpenGVLab/InternVL2-8B --port 8000
 
 ```bash
 export VLLM_BASE_URL="http://localhost:8000/v1"   # Default: localhost:8000
-export VLLM_API_KEY="EMPTY"                        # Default: EMPTY
 ```
+
+> **Note:** vLLM does not require an API key. The adapter uses no authentication by default.
 
 ### Step 3: Run EventLapse Evaluation
 
