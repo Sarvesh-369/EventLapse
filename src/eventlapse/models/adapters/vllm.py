@@ -52,6 +52,7 @@ class VLLMAdapter(BaseVideoModel):
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
+        # Encode video into base64 data url if needed
         try:
             with open(video_path, "rb") as vf:
                 b64_video = base64.b64encode(vf.read()).decode("utf-8")
@@ -84,7 +85,6 @@ class VLLMAdapter(BaseVideoModel):
                     model_version=self.config.model_name
                 )
             else:
-                # If native video_url endpoint is not supported by the vLLM model server, return error
                 return ModelResponse(
                     raw_response_text="",
                     latency_sec=latency,
@@ -114,6 +114,7 @@ class VLLMAdapter(BaseVideoModel):
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
+        content = [{"type": "text", "text": prompt}]
 
         for fp in frame_paths:
             try:
@@ -121,7 +122,7 @@ class VLLMAdapter(BaseVideoModel):
                     b64_img = base64.b64encode(img_f.read()).decode("utf-8")
                 img_url = f"data:image/jpeg;base64,{b64_img}"
                 content.append({"type": "image_url", "image_url": {"url": img_url}})
-            except Exception as e:
+            except Exception:
                 pass
 
         payload = {
@@ -161,7 +162,6 @@ class VLLMAdapter(BaseVideoModel):
 
     def _try_parse_json(self, text: str) -> Optional[Dict[str, Any]]:
         try:
-            # Look for ```json ... ``` blocks
             if "```json" in text:
                 json_str = text.split("```json")[1].split("```")[0].strip()
                 return json.loads(json_str)
