@@ -24,12 +24,12 @@ This document provides a technical guide to the 5 core synthetic event-counting 
 
 ---
 
-### 2. Frame Sampling Density Interventions (2 FPS, 10 FPS, Native Video)
-- **Objective**: Compare the model at 2 FPS, 10 FPS, and native video rate to test whether denser frame sampling shifts or expands the temporal failure boundary.
-- **Input Modes**: `frames_2fps`, `frames_10fps`, `native_video`
+### 2. Frame Sampling Density Interventions (Native Video, 1 FPS to 16 FPS)
+- **Objective**: Vary frame sampling density across 7 sampling rates to measure whether denser frame sampling shifts or expands the temporal failure boundary:
+  $$\text{Input Modes} \in \{\text{native\_video}, \text{frames\_1fps}, \text{frames\_2fps}, \text{frames\_4fps}, \text{frames\_8fps}, \text{frames\_10fps}, \text{frames\_16fps}\}$$
 - **Command**:
   ```bash
-  for mode in frames_2fps frames_10fps native_video; do
+  for mode in native_video frames_1fps frames_2fps frames_4fps frames_8fps frames_10fps frames_16fps; do
     python3 scripts/run_matrix_sweep.py \
       --provider google \
       --model-name gemini-2.0-flash \
@@ -55,18 +55,22 @@ This document provides a technical guide to the 5 core synthetic event-counting 
 ---
 
 ### 4. Prompting & Reasoning Mode Interventions
-- **Objective**: Compare performance across 4 prompting and reasoning controls:
-  1. `direct`: Direct answer boxed count only (`\boxed{N}`).
-  2. `structured_trace`: Event-by-event MORSE reasoning trace.
-  3. `multi_turn_verification`: Multi-turn self-verification.
-  4. `thinking`: Extended reasoning/thinking mode (e.g. Gemini Thinking, o3-mini).
-- **Command**:
+- **Objective**: Compare performance across 5 distinct prompting strategies:
+  1. `direct`: Direct zero-shot prompt requiring boxed final count (`\boxed{N}`).
+  2. `structured_trace`: Event-by-event MORSE CoT reasoning trace + `\boxed{N}`.
+  3. `multi_turn_verification`: Audit turn verifying detected timestamps for missed/duplicate events before boxing `\boxed{N}`.
+  4. `thinking`: Extended reasoning/thinking mode (e.g. Gemini 2.0 Flash Thinking, OpenAI o3-mini).
+  5. `role_prompting`: System instruction setting expert video analytics auditor persona.
+- **Commands**:
   ```bash
-  python3 scripts/run_matrix_sweep.py \
-    --provider google \
-    --model-name gemini-2.0-flash-thinking \
-    --input-mode native_video \
-    --prompt-condition thinking
+  # Evaluate all prompting conditions
+  for cond in direct structured_trace multi_turn_verification thinking role_prompting; do
+    python3 scripts/run_matrix_sweep.py \
+      --provider google \
+      --model-name gemini-2.0-flash \
+      --input-mode native_video \
+      --prompt-condition ${cond}
+  done
   ```
 
 ---

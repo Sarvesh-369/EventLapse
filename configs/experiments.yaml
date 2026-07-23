@@ -10,10 +10,10 @@ expt_1_event_count_x_frequency_grid:
   frequency_grid: [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
   metrics: [exact_match, valid_output_rate, boundary_estimate]
 
-# 2. Frame Sampling Density Interventions (2 FPS, 10 FPS, Native Video)
+# 2. Frame Sampling Density Interventions (Native Video, 1 FPS, 2 FPS, 4 FPS, 8 FPS, 10 FPS, 16 FPS)
 expt_2_frame_density_interventions:
   enabled: true
-  input_modes: [native_video, frames_2fps, frames_10fps]
+  input_modes: [native_video, frames_1fps, frames_2fps, frames_4fps, frames_8fps, frames_10fps, frames_16fps]
   target_domains: [bounce_ball, blinking, state_machine]
 
 # 3. Oracle Keyframe Evidence Interventions
@@ -22,10 +22,10 @@ expt_3_oracle_keyframe_evidence:
   input_mode: oracle_evidence
   event_window_epsilon: 0.1 # seconds
 
-# 4. Prompting & Reasoning Formats
+# 4. Prompting & Reasoning Format Interventions
 expt_4_prompting_and_thinking_modes:
   enabled: true
-  conditions: [direct, structured_trace, multi_turn_verification, thinking]
+  conditions: [direct, structured_trace, multi_turn_verification, thinking, role_prompting]
 
 # 5. MORSE Trace Diagnosis & Error Taxonomy
 expt_5_trace_diagnosis:
