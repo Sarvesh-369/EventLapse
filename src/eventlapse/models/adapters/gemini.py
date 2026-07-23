@@ -21,10 +21,14 @@ class GeminiAdapter(BaseVideoModel):
 
         try:
             from google import genai
+            from google.genai import types
+            self.genai = genai
+            self.types = types
             self.client = genai.Client(api_key=self.api_key) if self.api_key else None
         except Exception as e:
             logger.error(f"Failed to initialize google-genai client: {e}")
             self.client = None
+            self.types = None
 
     @property
     def supports_native_video(self) -> bool:
@@ -67,11 +71,50 @@ class GeminiAdapter(BaseVideoModel):
         self._file_cache[checksum] = file_ref
         return file_ref
 
+    def _build_gen_config(
+        self,
+        system_instruction: Optional[str] = None,
+        thinking_mode: bool = False,
+        response_schema: Optional[Dict[str, Any]] = None
+    ) -> Any:
+        if not self.types:
+            config_dict = {}
+            if self.config.temperature is not None:
+                config_dict["temperature"] = self.config.temperature
+            if system_instruction:
+                config_dict["system_instruction"] = system_instruction
+            if response_schema:
+                config_dict["response_mime_type"] = "application/json"
+                config_dict["response_schema"] = response_schema
+            return config_dict if config_dict else None
+
+        kwargs = {}
+        if self.config.temperature is not None:
+            kwargs["temperature"] = self.config.temperature
+
+        if system_instruction:
+            kwargs["system_instruction"] = system_instruction
+
+        if thinking_mode or "thinking" in self.config.model_name.lower():
+            try:
+                # Add thinking_config for models supporting reasoning / thinking
+                kwargs["thinking_config"] = self.types.ThinkingConfig(include_thoughts=True)
+            except Exception:
+                pass
+
+        if response_schema:
+            kwargs["response_mime_type"] = "application/json"
+            kwargs["response_schema"] = response_schema
+
+        return self.types.GenerateContentConfig(**kwargs) if kwargs else None
+
     def query_native_video(
         self,
         video_path: Path,
         prompt: str,
         response_schema: Optional[Dict[str, Any]] = None,
+        system_instruction: Optional[str] = None,
+        thinking_mode: bool = False,
         **kwargs
     ) -> ModelResponse:
         if not self.client:
@@ -88,20 +131,18 @@ class GeminiAdapter(BaseVideoModel):
             try:
                 video_file = self._upload_video_with_cache(video_path)
 
-                gen_config = {}
-                if self.config.temperature is not None:
-                    gen_config["temperature"] = self.config.temperature
-                if response_schema:
-                    gen_config["response_mime_type"] = "application/json"
-                    # Note: pass schema if dict or pydantic
-                    gen_config["response_schema"] = response_schema
+                gen_config = self._build_gen_config(
+                    system_instruction=system_instruction,
+                    thinking_mode=thinking_mode,
+                    response_schema=response_schema
+                )
 
                 contents = [video_file, prompt]
 
                 response = self.client.models.generate_content(
                     model=self.config.model_name,
                     contents=contents,
-                    config=gen_config if gen_config else None
+                    config=gen_config
                 )
 
                 latency = round(time.time() - start_time, 3)
@@ -150,6 +191,8 @@ class GeminiAdapter(BaseVideoModel):
         frame_paths: List[Path],
         prompt: str,
         response_schema: Optional[Dict[str, Any]] = None,
+        system_instruction: Optional[str] = None,
+        thinking_mode: bool = False,
         **kwargs
     ) -> ModelResponse:
         if not self.client:
@@ -161,15 +204,16 @@ class GeminiAdapter(BaseVideoModel):
 
         start_time = time.time()
         try:
-            gen_config = {}
-            if response_schema:
-                gen_config["response_mime_type"] = "application/json"
-                gen_config["response_schema"] = response_schema
+            gen_config = self._build_gen_config(
+                system_instruction=system_instruction,
+                thinking_mode=thinking_mode,
+                response_schema=response_schema
+            )
 
             response = self.client.models.generate_content(
                 model=self.config.model_name,
                 contents=contents,
-                config=gen_config if gen_config else None
+                config=gen_config
             )
 
             latency = round(time.time() - start_time, 3)
@@ -181,9 +225,18 @@ class GeminiAdapter(BaseVideoModel):
                 except Exception:
                     pass
 
+            usage_dict = {}
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                usage_dict = {
+                    "prompt_tokens": getattr(response.usage_metadata, "prompt_token_count", 0),
+                    "candidate_tokens": getattr(response.usage_metadata, "candidates_token_count", 0),
+                    "total_tokens": getattr(response.usage_metadata, "total_token_count", 0)
+                }
+
             return ModelResponse(
                 raw_response_text=raw_text,
                 parsed_json=parsed_json,
+                token_usage=usage_dict,
                 latency_sec=latency,
                 model_version=self.config.model_name,
                 finish_reason="STOP"
