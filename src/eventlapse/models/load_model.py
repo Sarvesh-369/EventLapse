@@ -5,6 +5,7 @@ from eventlapse.models.adapters.openai import OpenAIAdapter
 from eventlapse.models.adapters.anthropic import AnthropicAdapter
 from eventlapse.models.adapters.bedrock import BedrockAdapter
 from eventlapse.models.adapters.fireworks import FireworksAdapter
+from eventlapse.models.adapters.vllm import VLLMAdapter
 
 def load_model(provider: str, model_name: str, config: Optional[ModelConfig] = None) -> BaseVideoModel:
     if config is None:
@@ -25,5 +26,7 @@ def load_model(provider: str, model_name: str, config: Optional[ModelConfig] = N
         return BedrockAdapter(config)
     elif provider_lower == "fireworks":
         return FireworksAdapter(config)
+    elif provider_lower == "vllm":
+        return VLLMAdapter(config)
     else:
-        raise ValueError(f"Unsupported model provider: '{provider}'. Supported providers: google, openai, anthropic, bedrock, fireworks.")
+        raise ValueError(f"Unsupported model provider: '{provider}'. Supported providers: google, openai, anthropic, bedrock, fireworks, vllm.")

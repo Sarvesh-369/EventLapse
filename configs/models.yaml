@@ -1,7 +1,7 @@
 # Active Model Configurations
 primary_model:
   provider: google
-  model_name: gemini-3.5-flash
+  model_name: gemini-2.0-flash
   input_mode: native_video
   temperature: 0.0
   max_output_tokens: 2048
@@ -9,7 +9,7 @@ primary_model:
 
 fallback_models:
   - provider: google
-    model_name: gemini-2.5-flash
+    model_name: gemini-1.5-pro
     input_mode: native_video
     temperature: 0.0
   - provider: openai
@@ -18,5 +18,13 @@ fallback_models:
     temperature: 0.0
   - provider: anthropic
     model_name: claude-3-5-sonnet-20241022
+    input_mode: frames_2fps
+    temperature: 0.0
+  - provider: vllm
+    model_name: Qwen/Qwen2-VL-7B-Instruct
+    input_mode: frames_2fps
+    temperature: 0.0
+  - provider: vllm
+    model_name: lmms-lab/LLaVA-NeXT-Video-7B
     input_mode: frames_2fps
     temperature: 0.0
