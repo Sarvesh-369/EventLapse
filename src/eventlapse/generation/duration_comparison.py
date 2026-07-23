@@ -26,7 +26,7 @@ class DurationComparisonScene(Scene):
 
     def construct(self):
         set_seed(self.seed)
-        sample_hash = int(hashlib.md5(f"{self.seed}_{self.ratio:.2f}".encode()).hexdigest(), 16)
+        sample_hash = int(hashlib.md5(f"eventlapse_duration_{self.seed}_{self.ratio:.2f}".encode()).hexdigest(), 16)
         rng = random.Random(sample_hash)
 
         colors = get_nuisance_colors(self.seed, 4)
@@ -34,10 +34,16 @@ class DurationComparisonScene(Scene):
         top_zone_color, btm_zone_color = colors[2], colors[3]
 
         top_is_longer = rng.choice([True, False])
-
         dur_top = self.longer_duration if top_is_longer else self.shorter_duration
         dur_btm = self.shorter_duration if top_is_longer else self.longer_duration
         self.longer_object = "top object" if top_is_longer else "bottom object"
+
+        # Stagger entry times so that entry order is also randomized
+        stagger_top_first = rng.choice([True, False])
+        stagger_delay = rng.uniform(0.1, 0.4)
+
+        t_enter_top = 1.5 + (0.0 if stagger_top_first else stagger_delay)
+        t_enter_btm = 1.5 + (stagger_delay if stagger_top_first else 0.0)
 
         zone_top = Rectangle(width=1.5, height=1.5, color=top_zone_color, fill_opacity=0.3).move_to(UP * 1.5)
         zone_btm = Rectangle(width=1.5, height=1.5, color=btm_zone_color, fill_opacity=0.3).move_to(DOWN * 1.5)
@@ -46,43 +52,47 @@ class DurationComparisonScene(Scene):
         obj_btm = Square(side_length=0.8, color=btm_obj_color, fill_opacity=1).move_to(LEFT * 5.0 + DOWN * 1.5)
 
         self.add(zone_top, zone_btm, obj_top, obj_btm)
-
-        entry_time = 1.0
         self.wait(0.5)
-        self.play(
-            obj_top.animate.move_to(UP * 1.5),
-            obj_btm.animate.move_to(DOWN * 1.5),
-            run_time=entry_time
-        )
-        t_enter = 0.5 + entry_time
-        current_time = t_enter
 
-        self.events.append({"object": "top object", "event": "entry", "timestamp": round(t_enter, 2)})
-        self.events.append({"object": "bottom object", "event": "entry", "timestamp": round(t_enter, 2)})
+        # Animate entries according to randomized stagger
+        if stagger_top_first:
+            self.play(obj_top.animate.move_to(UP * 1.5), run_time=1.0)
+            self.events.append({"object": "top object", "event": "entry", "timestamp": round(t_enter_top, 2)})
+            self.wait(stagger_delay)
+            self.play(obj_btm.animate.move_to(DOWN * 1.5), run_time=1.0)
+            self.events.append({"object": "bottom object", "event": "entry", "timestamp": round(t_enter_btm, 2)})
+        else:
+            self.play(obj_btm.animate.move_to(DOWN * 1.5), run_time=1.0)
+            self.events.append({"object": "bottom object", "event": "entry", "timestamp": round(t_enter_btm, 2)})
+            self.wait(stagger_delay)
+            self.play(obj_top.animate.move_to(UP * 1.5), run_time=1.0)
+            self.events.append({"object": "top object", "event": "entry", "timestamp": round(t_enter_top, 2)})
 
-        if dur_top < dur_btm:
-            self.wait(dur_top)
-            t_exit_top = t_enter + dur_top
+        t_exit_top = t_enter_top + dur_top
+        t_exit_btm = t_enter_btm + dur_btm
+
+        # Animate exits in order of absolute exit timestamp
+        if t_exit_top < t_exit_btm:
+            wait_1 = max(0.1, t_exit_top - (t_enter_btm if not stagger_top_first else t_enter_top + 1.0))
+            self.wait(wait_1)
             self.play(obj_top.animate.move_to(RIGHT * 5.0 + UP * 1.5), run_time=1.0)
-            self.events.append({"object": "top object", "event": "exit", "timestamp": round(t_exit_top, 2), "dwell": dur_top})
+            self.events.append({"object": "top object", "event": "exit", "timestamp": round(t_exit_top, 2), "dwell": round(dur_top, 2)})
 
-            diff = dur_btm - dur_top
-            self.wait(max(0.1, diff - 1.0))
-            t_exit_btm = t_enter + dur_btm
+            wait_2 = max(0.1, t_exit_btm - t_exit_top - 1.0)
+            self.wait(wait_2)
             self.play(obj_btm.animate.move_to(RIGHT * 5.0 + DOWN * 1.5), run_time=1.0)
-            self.events.append({"object": "bottom object", "event": "exit", "timestamp": round(t_exit_btm, 2), "dwell": dur_btm})
+            self.events.append({"object": "bottom object", "event": "exit", "timestamp": round(t_exit_btm, 2), "dwell": round(dur_btm, 2)})
             current_time = t_exit_btm + 1.0
         else:
-            self.wait(dur_btm)
-            t_exit_btm = t_enter + dur_btm
+            wait_1 = max(0.1, t_exit_btm - (t_enter_top if stagger_top_first else t_enter_btm + 1.0))
+            self.wait(wait_1)
             self.play(obj_btm.animate.move_to(RIGHT * 5.0 + DOWN * 1.5), run_time=1.0)
-            self.events.append({"object": "bottom object", "event": "exit", "timestamp": round(t_exit_btm, 2), "dwell": dur_btm})
+            self.events.append({"object": "bottom object", "event": "exit", "timestamp": round(t_exit_btm, 2), "dwell": round(dur_btm, 2)})
 
-            diff = dur_top - dur_btm
-            self.wait(max(0.1, diff - 1.0))
-            t_exit_top = t_enter + dur_top
+            wait_2 = max(0.1, t_exit_top - t_exit_btm - 1.0)
+            self.wait(wait_2)
             self.play(obj_top.animate.move_to(RIGHT * 5.0 + UP * 1.5), run_time=1.0)
-            self.events.append({"object": "top object", "event": "exit", "timestamp": round(t_exit_top, 2), "dwell": dur_top})
+            self.events.append({"object": "top object", "event": "exit", "timestamp": round(t_exit_top, 2), "dwell": round(dur_top, 2)})
             current_time = t_exit_top + 1.0
 
         # Calculate remaining wait time to enforce FIXED_TASK_DURATION (13.0s)

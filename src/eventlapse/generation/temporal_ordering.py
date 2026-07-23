@@ -3,9 +3,10 @@ import math
 import hashlib
 import shutil
 import subprocess
+import numpy as np
 from pathlib import Path
 from typing import Dict, Any, List
-from manim import Scene, Line, Circle, LEFT, RIGHT, UP, DOWN, WHITE
+from manim import Scene, Line, Circle, WHITE
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
 from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
@@ -27,13 +28,18 @@ class TemporalOrderingScene(Scene):
 
     def construct(self):
         set_seed(self.seed)
-        sample_hash = int(hashlib.md5(f"{self.seed}_{self.L}".encode()).hexdigest(), 16)
+        sample_hash = int(hashlib.md5(f"eventlapse_ordering_{self.seed}_{self.L}".encode()).hexdigest(), 16)
         rng = random.Random(sample_hash)
 
         colors = get_nuisance_colors(self.seed, self.L)
 
-        finish_x = 3.0
-        finish_line = Line(UP * 3.5 + RIGHT * finish_x, DOWN * 3.5 + RIGHT * finish_x, color=WHITE, stroke_width=4)
+        # Continuous angle rotation theta in [0, 2*pi)
+        rotation_angle = rng.uniform(0, 2 * math.pi)
+        u = np.array([math.cos(rotation_angle), math.sin(rotation_angle), 0]) # motion direction
+        v = np.array([-math.sin(rotation_angle), math.cos(rotation_angle), 0]) # finish line direction
+
+        finish_dist = 3.0
+        finish_line = Line(u * finish_dist + v * 3.5, u * finish_dist - v * 3.5, color=WHITE, stroke_width=4)
         self.add(finish_line)
 
         order_indices = list(range(self.L))
@@ -52,12 +58,15 @@ class TemporalOrderingScene(Scene):
 
         for rank, obj_idx in enumerate(order_indices):
             obj_meta = object_metadata[obj_idx]
-            lane_y = lane_heights[obj_idx]
-            shape = Circle(radius=0.25, color=obj_meta["hex"], fill_opacity=1)
-            shape.move_to(LEFT * 6.0 + UP * lane_y)
+            lane_offset = lane_heights[obj_idx]
+
+            start_pos = -u * 6.0 + v * lane_offset
+            target_pos = u * 4.5 + v * lane_offset
+
+            shape = Circle(radius=0.25, color=obj_meta["hex"], fill_opacity=1).move_to(start_pos)
             self.add(shape)
 
-            self.play(shape.animate.move_to(RIGHT * 4.5 + UP * lane_y), run_time=1.2)
+            self.play(shape.animate.move_to(target_pos), run_time=1.2)
             crossing_time = round(current_time + 0.6, 2)
             current_time += interval
 

@@ -1,10 +1,12 @@
 import random
+import math
 import hashlib
 import shutil
 import subprocess
+import numpy as np
 from pathlib import Path
 from typing import Dict, Any, List
-from manim import Scene, Circle, Rectangle, RIGHT, LEFT, UP, DOWN
+from manim import Scene, Circle, Rectangle
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
 from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
@@ -23,55 +25,45 @@ class EventCountingScene(Scene):
 
     def construct(self):
         set_seed(self.seed)
-        sample_hash = int(hashlib.md5(f"{self.seed}_{self.N}".encode()).hexdigest(), 16)
+        sample_hash = int(hashlib.md5(f"eventlapse_counting_{self.seed}_{self.N}".encode()).hexdigest(), 16)
         rng = random.Random(sample_hash)
 
         colors = get_nuisance_colors(self.seed, 3)
         ball_color = colors[0]
         wall_color = colors[1]
 
-        orientation = sample_hash % 2
+        # Continuous angle rotation theta in [0, 2*pi)
+        rotation_angle = rng.uniform(0, 2 * math.pi)
+        u = np.array([math.cos(rotation_angle), math.sin(rotation_angle), 0])
+
         ball_radius = rng.uniform(0.25, 0.35)
         ball = Circle(radius=ball_radius, color=ball_color, fill_opacity=1)
 
         wall_dist = rng.uniform(2.5, 3.5)
-        wall1 = Rectangle(width=0.2, height=3.0, color=wall_color, fill_opacity=1)
-        wall2 = Rectangle(width=0.2, height=3.0, color=wall_color, fill_opacity=1)
+        wall1 = Rectangle(width=0.2, height=3.0, color=wall_color, fill_opacity=1).move_to(-u * wall_dist).rotate(rotation_angle)
+        wall2 = Rectangle(width=0.2, height=3.0, color=wall_color, fill_opacity=1).move_to(u * wall_dist).rotate(rotation_angle)
 
         # Pick random interior start position away from both walls
         start_offset = rng.uniform(-0.5 * wall_dist, 0.5 * wall_dist)
         initial_target_positive = rng.choice([True, False])
 
-        if orientation == 0:
-            wall1.move_to(LEFT * wall_dist)
-            wall2.move_to(RIGHT * wall_dist)
-            ball.move_to(RIGHT * start_offset)
-        else:
-            wall1.rotate(1.5708)
-            wall2.rotate(1.5708)
-            wall1.move_to(DOWN * wall_dist)
-            wall2.move_to(UP * wall_dist)
-            ball.move_to(UP * start_offset)
+        ball.move_to(u * start_offset)
 
         self.add(wall1, wall2, ball)
         self.wait(0.2)
         current_time = 0.2
 
         # Initial move from interior start position to first wall
-        if orientation == 0:
-            first_target = (RIGHT if initial_target_positive else LEFT) * (wall_dist - ball_radius - 0.1)
-            dist_first = abs(first_target[0] - start_offset)
-        else:
-            first_target = (UP if initial_target_positive else DOWN) * (wall_dist - ball_radius - 0.1)
-            dist_first = abs(first_target[1] - start_offset)
+        first_target = (u if initial_target_positive else -u) * (wall_dist - ball_radius - 0.1)
+        dist_first = abs(np.linalg.norm(first_target - (u * start_offset)))
 
         first_leg_duration = max(0.3, dist_first / 3.0)
         self.play(ball.animate.move_to(first_target), run_time=first_leg_duration)
         current_time += first_leg_duration
 
-        wall_id = "wall_right" if initial_target_positive else "wall_left"
-        dir_before = "right" if initial_target_positive else "left"
-        dir_after = "left" if initial_target_positive else "right"
+        wall_id = "wall_positive" if initial_target_positive else "wall_negative"
+        dir_before = "forward" if initial_target_positive else "backward"
+        dir_after = "backward" if initial_target_positive else "forward"
 
         self.contact_events.append({
             "contact_index": 1,
@@ -86,17 +78,14 @@ class EventCountingScene(Scene):
         one_way_duration = 1.0
 
         for i in range(1, self.N):
-            if orientation == 0:
-                target_pos = (RIGHT if current_target_positive else LEFT) * (wall_dist - ball_radius - 0.1)
-            else:
-                target_pos = (UP if current_target_positive else DOWN) * (wall_dist - ball_radius - 0.1)
+            target_pos = (u if current_target_positive else -u) * (wall_dist - ball_radius - 0.1)
 
             self.play(ball.animate.move_to(target_pos), run_time=one_way_duration)
             current_time += one_way_duration
 
-            wall_id = "wall_right" if current_target_positive else "wall_left"
-            dir_before = "right" if current_target_positive else "left"
-            dir_after = "left" if current_target_positive else "right"
+            wall_id = "wall_positive" if current_target_positive else "wall_negative"
+            dir_before = "forward" if current_target_positive else "backward"
+            dir_after = "backward" if current_target_positive else "forward"
 
             self.contact_events.append({
                 "contact_index": i + 1,
@@ -111,14 +100,9 @@ class EventCountingScene(Scene):
 
         # Final move after bounce N: return to interior space away from walls
         end_offset = rng.uniform(-0.5 * wall_dist, 0.5 * wall_dist)
-        if orientation == 0:
-            end_target = RIGHT * end_offset
-            last_wall_val = (RIGHT if not current_target_positive else LEFT) * (wall_dist - ball_radius - 0.1)
-            dist_end = abs(end_target[0] - last_wall_val[0])
-        else:
-            end_target = UP * end_offset
-            last_wall_val = (UP if not current_target_positive else DOWN) * (wall_dist - ball_radius - 0.1)
-            dist_end = abs(end_target[1] - last_wall_val[1])
+        end_target = u * end_offset
+        last_wall_val = (u if not current_target_positive else -u) * (wall_dist - ball_radius - 0.1)
+        dist_end = abs(np.linalg.norm(end_target - last_wall_val))
 
         final_leg_duration = max(0.3, dist_end / 3.0)
         self.play(ball.animate.move_to(end_target), run_time=final_leg_duration)
