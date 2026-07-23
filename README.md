@@ -4,6 +4,9 @@
 
 EventLapse is a research framework for profiling and diagnosing the temporal reasoning capabilities of frontier Video-Language Models (VLMs) across **7 synthetic video tasks** rendered with Manim Community Edition, using the **MORSE** executable trace evaluation methodology with Trace Precision / Recall / F1 scoring and operational capability boundary estimation.
 
+> 📖 **Detailed Experiments Guide:** See [EXPERIMENTS.md](file:///Users/sarvesh/Documents/VLM_failures/EventLapse/EXPERIMENTS.md) for full technical documentation on the $N \times F$ matrix sweep framework, vLLM hosting, interventions, error taxonomy, and metrics.
+
+
 ---
 
 ## 🚀 Quickstart & Installation
