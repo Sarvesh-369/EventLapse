@@ -1,0 +1,26 @@
+# Environment & Local files
+.env
+.env.local
+*.log
+
+# Data and Outputs (Do not push to git)
+data/
+outputs/
+manim_output/
+*.mp4
+*.png
+*.jpg
+*.jpeg
+
+# Python build & caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+.mypy_cache/

@@ -1,0 +1,25 @@
+# Known Provider Model Candidate Enums / Registry
+google:
+  - gemini-3.5-flash
+  - gemini-2.5-flash
+  - gemini-2.5-pro
+  - gemini-1.5-flash
+  - gemini-1.5-pro
+
+openai:
+  - gpt-4o
+  - gpt-4o-mini
+  - o1
+  - o3-mini
+
+anthropic:
+  - claude-3-5-sonnet-20241022
+  - claude-3-5-haiku-20241022
+
+bedrock:
+  - anthropic.claude-3-5-sonnet-20241022-v2:0
+  - amazon.nova-pro-v1:0
+
+fireworks:
+  - accounts/fireworks/models/qwen2-vl-72b-instruct
+  - accounts/fireworks/models/llama-3.2-11b-vision-instruct

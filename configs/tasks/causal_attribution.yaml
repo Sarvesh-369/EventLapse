@@ -1,0 +1,6 @@
+task_name: causal_attribution
+control_parameter_name: C
+control_parameter_values: [1, 2, 3, 4, 5, 6]
+num_distractor_chains: 2
+harder_when: increasing
+question_template: "Which colored object caused the lamp to turn on?"

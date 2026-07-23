@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eventlapse"
+version = "0.1.0"
+description = "EventLapse: Trace-Grounded Parametric Profiling of Temporal Capabilities in Frontier Video LLMs"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "manim>=0.18.0",
+    "google-genai>=0.1.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+    "scipy>=1.10.0",
+    "pillow>=9.5.0",
+    "click>=8.1.0",
+    "tqdm>=4.65.0",
+    "pytest>=7.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "black",
+    "isort",
+    "flake8",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

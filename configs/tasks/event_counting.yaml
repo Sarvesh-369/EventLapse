@@ -1,0 +1,6 @@
+task_name: event_counting
+control_parameter_name: N
+control_parameter_values: [1, 2, 3, 4, 6, 8, 10, 12, 16]
+contact_rate_per_sec: 1.0
+harder_when: increasing
+question_template: "How many times did the ball contact the walls?"

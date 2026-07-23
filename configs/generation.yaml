@@ -1,0 +1,15 @@
+# Synthetic Video Generation Config
+output_dir: data
+resolution: [1920, 1080]
+fps: 30
+num_seeds: 20
+seed_range: [0, 19]
+
+tasks:
+  - event_counting
+  - event_frequency
+  - temporal_ordering
+  - duration_comparison
+  - causal_attribution
+  - future_prediction
+  - long_term_dependency

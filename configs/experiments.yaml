@@ -1,0 +1,44 @@
+# Main Experiments Configuration
+reliability_threshold_tau: 0.80
+confidence_interval: 0.95
+
+group_1_capability_boundaries:
+  enabled: true
+  tasks: all
+  metrics: [exact_match, valid_output_rate, boundary_estimate]
+
+group_2_trace_diagnosis:
+  enabled: true
+  schema_mode: structured_trace
+  error_categories:
+    - missed_event
+    - hallucinated_event
+    - merged_events
+    - duplicated_event
+    - misordered_event
+    - wrong_timestamp
+    - wrong_onset
+    - wrong_offset
+    - wrong_duration_comparison
+    - missing_causal_edge
+    - hallucinated_causal_edge
+    - wrong_root_cause
+    - wrong_rule
+    - correct_rule_wrong_rollout
+    - off_by_one_prediction
+    - lost_object_identity
+    - correct_trace_wrong_final_answer
+    - incorrect_trace_accidental_correct
+
+group_3_interventions:
+  frame_density:
+    input_modes: [native_video, frames_2fps, frames_10fps]
+    target_tasks: [event_counting, event_frequency, duration_comparison]
+  oracle_evidence:
+    target_tasks: all
+    epsilon: 0.1 # seconds
+  prompting_and_thinking:
+    conditions: [direct, structured_trace, multi_turn_verification, thinking]
+
+group_4_natural_transfer:
+  datasets: [repcount_a]

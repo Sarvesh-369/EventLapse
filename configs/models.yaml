@@ -1,0 +1,22 @@
+# Active Model Configurations
+primary_model:
+  provider: google
+  model_name: gemini-3.5-flash
+  input_mode: native_video
+  temperature: 0.0
+  max_output_tokens: 2048
+  thinking_level: null # optional
+
+fallback_models:
+  - provider: google
+    model_name: gemini-2.5-flash
+    input_mode: native_video
+    temperature: 0.0
+  - provider: openai
+    model_name: gpt-4o-mini
+    input_mode: frames_2fps
+    temperature: 0.0
+  - provider: anthropic
+    model_name: claude-3-5-sonnet-20241022
+    input_mode: frames_2fps
+    temperature: 0.0

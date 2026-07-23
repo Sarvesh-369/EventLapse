@@ -1,0 +1,6 @@
+task_name: temporal_ordering
+control_parameter_name: L
+control_parameter_values: [3, 4, 6, 8, 10, 12, 16]
+inter_crossing_interval_sec: 0.8
+harder_when: increasing
+question_template: "Which object crossed the finish line in position {k}?"

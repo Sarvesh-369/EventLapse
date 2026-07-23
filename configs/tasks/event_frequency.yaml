@@ -1,0 +1,7 @@
+task_name: event_frequency
+control_parameter_name: f
+control_parameter_values: [0.5, 1.0, 1.5, 2.0, 3.0, 4.0]
+faster_ratio: 1.5
+clip_duration_sec: 4.0
+harder_when: increasing
+question_template: "Which pendulum oscillated faster?"

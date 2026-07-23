@@ -1,0 +1,6 @@
+task_name: long_term_dependency
+control_parameter_name: D
+control_parameter_values: [0, 2, 4, 8, 12, 16]
+num_parcels: 3
+harder_when: increasing
+question_template: "Did the parcel marked at the beginning enter the delivery bin?"

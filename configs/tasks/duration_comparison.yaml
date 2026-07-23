@@ -1,0 +1,6 @@
+task_name: duration_comparison
+control_parameter_name: r
+control_parameter_values: [1.05, 1.10, 1.25, 1.50, 2.00, 3.00]
+shorter_duration_sec: 2.0
+harder_when: decreasing
+question_template: "Which object remained stopped longer?"

@@ -1,0 +1,9 @@
+task_name: future_prediction
+control_parameter_name: h
+control_parameter_values: [1, 2, 3, 4, 5]
+num_squares: 4
+flash_duration_sec: 0.5
+inter_flash_interval_sec: 0.3
+observed_cycles: 2
+harder_when: increasing
+question_template: "Which colored square will flash {h} steps after the video ends?"
