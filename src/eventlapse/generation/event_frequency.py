@@ -1,5 +1,6 @@
 import random
 import math
+import hashlib
 import shutil
 import numpy as np
 from pathlib import Path
@@ -22,10 +23,12 @@ class EventFrequencyScene(Scene):
 
     def construct(self):
         set_seed(self.seed)
+        sample_hash = int(hashlib.md5(f"eventlapse_freq_{self.seed}_{self.f_slower:.2f}".encode()).hexdigest(), 16)
+        rng = random.Random(sample_hash)
+
         colors = get_nuisance_colors(self.seed, 3)
         left_color, right_color = colors[0], colors[1]
 
-        rng = random.Random(self.seed)
         faster_is_left = rng.choice([True, False])
         self.faster_side = "left" if faster_is_left else "right"
 
@@ -79,26 +82,41 @@ class EventFrequencyScene(Scene):
         rod_right.add_updater(update_rod_right)
         bob_right.add_updater(update_bob_right)
 
+        # Track oscillation cycle peaks
+        period_left = 1.0 / f_left
+        period_right = 1.0 / f_right
+
+        left_cycles = int(self.clip_duration / period_left)
+        right_cycles = int(self.clip_duration / period_right)
+
+        for c in range(1, left_cycles + 1):
+            t_event = c * period_left
+            if t_event <= self.clip_duration:
+                self.events.append({
+                    "side": "left",
+                    "timestamp": round(t_event, 2),
+                    "frequency": f_left,
+                    "completed_cycle": c
+                })
+
+        for c in range(1, right_cycles + 1):
+            t_event = c * period_right
+            if t_event <= self.clip_duration:
+                self.events.append({
+                    "side": "right",
+                    "timestamp": round(t_event, 2),
+                    "frequency": f_right,
+                    "completed_cycle": c
+                })
+
+        self.events.sort(key=lambda x: x["timestamp"])
+
         self.play(time_tracker.animate.set_value(self.clip_duration), run_time=self.clip_duration, rate_func=linear)
-        self.wait(0.2)
 
         rod_left.remove_updater(update_rod_left)
         bob_left.remove_updater(update_bob_left)
         rod_right.remove_updater(update_rod_right)
         bob_right.remove_updater(update_bob_right)
-
-        for side, f in [("left", f_left), ("right", f_right)]:
-            period = 1.0 / f
-            num_cycles = int(self.clip_duration / period)
-            for c in range(num_cycles):
-                t_cycle = round((c + 1) * period, 2)
-                if t_cycle <= self.clip_duration:
-                    self.events.append({
-                        "side": side,
-                        "frequency": f,
-                        "completed_cycle": c + 1,
-                        "timestamp": t_cycle
-                    })
 
         # Render question text overlay at the end of the video
         render_question_card(

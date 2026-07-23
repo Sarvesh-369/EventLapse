@@ -1,4 +1,5 @@
 import random
+import hashlib
 import shutil
 import subprocess
 from pathlib import Path
@@ -22,12 +23,14 @@ class EventCountingScene(Scene):
 
     def construct(self):
         set_seed(self.seed)
+        sample_hash = int(hashlib.md5(f"{self.seed}_{self.N}".encode()).hexdigest(), 16)
+        rng = random.Random(sample_hash)
+
         colors = get_nuisance_colors(self.seed, 3)
         ball_color = colors[0]
         wall_color = colors[1]
 
-        rng = random.Random(self.seed)
-        orientation = self.seed % 2
+        orientation = sample_hash % 2
         ball_radius = rng.uniform(0.25, 0.35)
         ball = Circle(radius=ball_radius, color=ball_color, fill_opacity=1)
 

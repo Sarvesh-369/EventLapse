@@ -1,5 +1,6 @@
 import random
 import math
+import hashlib
 import shutil
 import subprocess
 from pathlib import Path
@@ -26,13 +27,15 @@ class TemporalOrderingScene(Scene):
 
     def construct(self):
         set_seed(self.seed)
+        sample_hash = int(hashlib.md5(f"{self.seed}_{self.L}".encode()).hexdigest(), 16)
+        rng = random.Random(sample_hash)
+
         colors = get_nuisance_colors(self.seed, self.L)
 
         finish_x = 3.0
         finish_line = Line(UP * 3.5 + RIGHT * finish_x, DOWN * 3.5 + RIGHT * finish_x, color=WHITE, stroke_width=4)
         self.add(finish_line)
 
-        rng = random.Random(self.seed)
         order_indices = list(range(self.L))
         rng.shuffle(order_indices)
 
@@ -113,20 +116,20 @@ class TemporalOrderingGenerator(BaseTaskGenerator):
             seed=seed
         )
 
-        k = scene.queried_k
-        question = f"Which object crossed the finish line in position {k}?"
+        question = f"Which object crossed the finish line in position {scene.queried_k}?"
         exact_answer = scene.correct_object_color
 
         trace_data = {
             "steps": [
                 {
-                    "state": {"finish_line_crossings": e["rank"]},
+                    "state": {"rank": e["rank"], "color": e["color_name"]},
                     "event": {"type": "finish_line_crossing", "timestamp": e["timestamp"], "color": e["color_name"]},
-                    "operation": {"action": "record_crossing_order", "rank": e["rank"], "color": e["color_name"]}
+                    "operation": {"action": "record_crossing_rank", "rank": e["rank"]}
                 } for e in scene.crossing_events
             ],
-            "queried_k": k,
-            "ordered_crossings": [e["color_name"] for e in scene.crossing_events],
+            "sequence_length": L,
+            "queried_rank": scene.queried_k,
+            "correct_color": exact_answer,
             "events": scene.crossing_events
         }
 
@@ -136,17 +139,17 @@ class TemporalOrderingGenerator(BaseTaskGenerator):
             "Let's analyze the video step by step.",
             "",
             "### Scene Description",
-            f"Objects crossing finish line sequentially (sequence length L={L}).",
+            f"Sequence of L={L} colored objects crossing the finish line.",
             "",
-            "### Step 1: Record Crossing Order"
+            "### Step 1: Record Finish Line Crossings"
         ]
         for e in scene.crossing_events:
             cot_lines.append(f"- Position {e['rank']} at {e['timestamp']:.2f}s: {e['color_name']} object")
 
         cot_lines.extend([
             "",
-            f"### Step 2: Extract Queried Position k={k}",
-            f"Object crossing in position {k} is {exact_answer}.",
+            "### Step 2: Identify Position {scene.queried_k}",
+            f"Object at position {scene.queried_k}: {exact_answer}.",
             "",
             f"\\boxed{{{exact_answer}}}"
         ])

@@ -1,4 +1,5 @@
 import random
+import hashlib
 import shutil
 import subprocess
 from pathlib import Path
@@ -25,11 +26,13 @@ class DurationComparisonScene(Scene):
 
     def construct(self):
         set_seed(self.seed)
+        sample_hash = int(hashlib.md5(f"{self.seed}_{self.ratio:.2f}".encode()).hexdigest(), 16)
+        rng = random.Random(sample_hash)
+
         colors = get_nuisance_colors(self.seed, 4)
         top_obj_color, btm_obj_color = colors[0], colors[1]
         top_zone_color, btm_zone_color = colors[2], colors[3]
 
-        rng = random.Random(self.seed)
         top_is_longer = rng.choice([True, False])
 
         dur_top = self.longer_duration if top_is_longer else self.shorter_duration
