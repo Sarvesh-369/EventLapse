@@ -2,7 +2,7 @@ import random
 import shutil
 from pathlib import Path
 from typing import Dict, Any, List
-from manim import Scene, Circle, Square, Rectangle, RIGHT, LEFT, UP, DOWN, GREY, YELLOW
+from manim import Scene, Circle, Square, Line, Text, RIGHT, LEFT, UP, DOWN, GREY, YELLOW
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
 from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
@@ -10,103 +10,116 @@ from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
 COLOR_NAMES = ["red", "blue", "green", "purple", "orange", "cyan"]
+HEX_MAP = {
+    "red": "#FF4444",
+    "blue": "#4444FF",
+    "green": "#44FF44",
+    "purple": "#AA44FF",
+    "orange": "#FF8844",
+    "cyan": "#44FFFF"
+}
 
 class CausalAttributionScene(Scene):
     def __init__(self, C: int, seed: int, **kwargs):
         super().__init__(**kwargs)
         self.C = int(C)
         self.seed = seed
-        self.causal_graph = {"nodes": [], "edges": []}
         self.correct_cause_color = ""
-        self.events = []
+        self.causal_events = []
+        self.chain_metadata = []
 
     def construct(self):
         set_seed(self.seed)
-        num_chains = 3
-        colors = get_nuisance_colors(self.seed, num_chains + 1)
-
         rng = random.Random(self.seed)
-        true_cause_idx = rng.randint(0, num_chains - 1)
-        self.correct_cause_color = COLOR_NAMES[true_cause_idx % len(COLOR_NAMES)]
+        num_chains = 3
 
-        lamp = Circle(radius=0.5, color=GREY, fill_opacity=0.5).move_to(RIGHT * 5.0)
-        self.add(lamp)
+        available_colors = list(COLOR_NAMES)
+        rng.shuffle(available_colors)
+        colors = available_colors[:num_chains]
+
+        true_cause_row = rng.randint(0, num_chains - 1)
+        self.correct_cause_color = colors[true_cause_row]
 
         y_positions = [2.0, 0.0, -2.0]
-        chain_objects = []
 
-        for idx in range(num_chains):
-            col_hex = colors[idx]
-            col_name = COLOR_NAMES[idx % len(COLOR_NAMES)]
-            y = y_positions[idx]
+        lamp = Circle(radius=0.5, color=GREY, fill_opacity=0.3).move_to(RIGHT * 5.0)
+        lamp_label = Text("LAMP", font_size=18).move_to(RIGHT * 5.0)
+        self.add(lamp, lamp_label)
 
-            init_obj = Square(side_length=0.6, color=col_hex, fill_opacity=1).move_to(LEFT * 5.0 + UP * y)
-            self.add(init_obj)
+        chain_elements = []
 
-            depth = self.C if idx == true_cause_idx else max(1, self.C - 1)
-            chain_objects.append({
-                "idx": idx,
-                "color_name": col_name,
-                "is_true_cause": (idx == true_cause_idx),
-                "init_obj": init_obj,
-                "depth": depth,
-                "y": y
+        step_x = 9.0 / (self.C + 1)
+
+        for row in range(num_chains):
+            y = y_positions[row]
+            c_name = colors[row]
+            c_hex = HEX_MAP.get(c_name, "#FFFFFF")
+
+            ball = Circle(radius=0.35, color=c_hex, fill_opacity=1.0).move_to(LEFT * 5.5 + UP * y)
+            self.add(ball)
+
+            blocks = []
+            lines = []
+            num_blocks = self.C if row == true_cause_row else rng.randint(1, max(1, self.C - 1))
+
+            prev_pos = LEFT * 5.5 + UP * y
+            for b_idx in range(num_blocks):
+                bx = -5.5 + (b_idx + 1) * step_x
+                block = Square(side_length=0.4, color=GREY, fill_opacity=0.5).move_to(RIGHT * bx + UP * y)
+                line = Line(prev_pos, RIGHT * bx + UP * y, color=GREY, stroke_width=2)
+                self.add(line, block)
+                blocks.append(block)
+                lines.append(line)
+                prev_pos = RIGHT * bx + UP * y
+
+            if row == true_cause_row:
+                final_line = Line(prev_pos, RIGHT * 4.5 + UP * y, color=GREY, stroke_width=2)
+                self.add(final_line)
+                lines.append(final_line)
+
+            chain_elements.append({
+                "row": row,
+                "color": c_name,
+                "is_true": (row == true_cause_row),
+                "ball": ball,
+                "blocks": blocks,
+                "lines": lines
             })
-
-            self.causal_graph["nodes"].append(f"object_{col_name}")
-
-        current_time = 0.5
-
-        for item in chain_objects:
-            col_name = item["color_name"]
-            y = item["y"]
-            depth = item["depth"]
-            is_true = item["is_true_cause"]
-
-            self.play(item["init_obj"].animate.shift(RIGHT * 1.5), run_time=0.6)
-            current_time += 0.6
-            self.events.append({
-                "type": "initiation",
-                "object": col_name,
-                "timestamp": round(current_time, 2)
-            })
-
-            curr_x = -3.5 + 1.5
-            prev_node = f"object_{col_name}"
-
-            for d in range(depth):
-                next_node = f"step_{col_name}_{d+1}"
-                self.causal_graph["nodes"].append(next_node)
-                self.causal_graph["edges"].append([prev_node, next_node])
-
-                block = Rectangle(width=0.3, height=0.6, color="#FFFFFF", fill_opacity=1).move_to(RIGHT * (curr_x + 0.8) + UP * y)
-                self.add(block)
-                self.play(block.animate.scale(1.2).set_color(YELLOW), run_time=0.4)
-                current_time += 0.4
-
-                self.events.append({
-                    "type": "intermediate_activation",
-                    "step": d + 1,
-                    "object": col_name,
-                    "timestamp": round(current_time, 2)
-                })
-                curr_x += 0.8
-                prev_node = next_node
-
-            if is_true:
-                self.causal_graph["edges"].append([prev_node, "lamp"])
-                self.play(lamp.animate.set_color(YELLOW).set_fill(YELLOW, opacity=1.0), run_time=0.5)
-                current_time += 0.5
-                self.events.append({
-                    "type": "lamp_activation",
-                    "object": col_name,
-                    "timestamp": round(current_time, 2)
-                })
-            else:
-                self.wait(0.3)
-                current_time += 0.3
 
         self.wait(0.5)
+
+        for step in range(self.C):
+            anims = []
+            for ch in chain_elements:
+                if step < len(ch["blocks"]):
+                    anims.append(ch["blocks"][step].animate.set_color(YELLOW).set_fill(YELLOW, opacity=0.8))
+                    anims.append(ch["lines"][step].animate.set_color(YELLOW).set_stroke(width=4))
+
+                    if ch["is_true"]:
+                        cause_desc = f"{ch['color']}_ball_initiates_step_{step+1}" if step == 0 else f"step_{step}_activates_step_{step+1}"
+                        effect_desc = f"step_{step+1}_activated"
+                        self.causal_events.append({
+                            "step": step + 1,
+                            "cause": cause_desc,
+                            "effect": effect_desc
+                        })
+
+            if anims:
+                self.play(*anims, run_time=0.6)
+
+        true_ch = [ch for ch in chain_elements if ch["is_true"]][0]
+        self.play(
+            true_ch["lines"][-1].animate.set_color(YELLOW).set_stroke(width=4),
+            lamp.animate.set_color(YELLOW).set_fill(YELLOW, opacity=1.0),
+            run_time=0.6
+        )
+        self.causal_events.append({
+            "step": self.C + 1,
+            "cause": f"step_{self.C}_activates_lamp",
+            "effect": "lamp_turns_on"
+        })
+
+        self.wait(1.0)
 
         # Render question text overlay at the end of the video
         render_question_card(
@@ -150,15 +163,15 @@ class CausalAttributionGenerator(BaseTaskGenerator):
         trace_data = {
             "steps": [
                 {
-                    "state": {"active_chain": e["object"]},
-                    "event": {"type": e["type"], "object": e["object"], "timestamp": e["timestamp"]},
-                    "operation": {"action": "evaluate_causal_propagation"}
-                } for e in scene.events
+                    "state": {"active_step": ev["step"]},
+                    "event": {"type": "causal_propagation", "cause": ev["cause"], "effect": ev["effect"]},
+                    "operation": {"action": "trace_causal_chain", "step": ev["step"]}
+                } for ev in scene.causal_events
             ],
+            "root_cause": exact_answer,
+            "causal_events": scene.causal_events,
             "causal_depth": C,
-            "causal_graph": scene.causal_graph,
-            "root_cause_object": exact_answer,
-            "events": scene.events
+            "answer": exact_answer
         }
 
         cot_lines = [
@@ -167,17 +180,20 @@ class CausalAttributionGenerator(BaseTaskGenerator):
             "Let's analyze the video step by step.",
             "",
             "### Scene Description",
-            f"Parallel scripted causal chains (depth C={C}) activating toward lamp.",
+            f"Three parallel colored cause-and-effect chains (depth C={C}) terminating at a lamp.",
             "",
-            "### Step 1: Trace Causal Graph Chain Activations"
+            "### Step 1: Trace Parallel Causal Chains"
         ]
-        for e in scene.events:
-            cot_lines.append(f"- At {e['timestamp']:.2f}s: [{e['type']}] by {e['object']} object")
+        for ev in scene.causal_events:
+            cot_lines.append(f"- Step {ev['step']}: [{ev['cause']}] -> [{ev['effect']}]")
 
         cot_lines.extend([
             "",
-            "### Step 2: Identify Root Cause",
-            f"The chain initiated by the {exact_answer} object successfully triggered the lamp activation event.",
+            "### Step 2: Evaluate Lamp Activation",
+            f"Only the chain initiated by the {exact_answer} ball reached and activated the lamp.",
+            "",
+            "### Step 3: Identify Root Cause",
+            f"Root cause object: {exact_answer}",
             "",
             f"\\boxed{{{exact_answer}}}"
         ])
@@ -197,7 +213,7 @@ class CausalAttributionGenerator(BaseTaskGenerator):
             sample_id, self.task_name, rendered_file, trace_data, cot_text, gt_data, output_dir
         )
         checksum = compute_file_checksum(dest_video)
-        duration = round(1.0 + 3 * (0.6 + C * 0.4) + 3.7, 2)
+        duration = round(0.5 + C * 0.6 + 2.2 + 3.7, 2)
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 
