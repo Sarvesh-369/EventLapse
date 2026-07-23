@@ -1,55 +1,52 @@
-# EventLapse: Comprehensive Experiments & Evaluation Guide
+# EventLapse: Event Counting Experiments & Evaluation Guide ($N \times F$ Matrix)
 
-This document provides a detailed, technical guide to the experimental protocol, the $N \times F$ parametric matrix evaluation framework, supported model providers (including vLLM open-source hosting), interventions, evaluation metrics, and step-by-step commands to reproduce all paper evaluations.
+This document provides a comprehensive technical guide to the experimental protocol for **Event Counting** evaluated across the 3 core video domains (**Bounce Ball**, **Blinking**, and **State Machine**), systematically sweeping the 2D **$N \times F$ Matrix** (Event Count $N$ vs Event Frequency $F$, Hz).
 
 ---
 
-## 📌 Executive Summary of Experimental Architecture
+## 📌 Executive Summary of Research Design
 
-EventLapse profiles the temporal reasoning boundaries of Video-Language Models (VLMs) by evaluating them across controlled **Parametric Axes** ($N \times F$ grids) and **Intervention Controls**. 
+EventLapse assesses Vision-Language Models (VLMs) on **Event Counting** across 3 controlled visual domains:
 
-Evaluation is performed using **Trace-Grounded Evaluation (MORSE)**, assessing both final answer correctness (Exact Match) and intermediate reasoning trace fidelity (Trace Precision, Recall, F1, Accidental Correctness, and Reasoning Failures).
+1. **`bounce_ball`**: Physics simulation of a ball bouncing between walls; models count the total number of wall contacts ($N$) across oscillation frequencies ($F$).
+2. **`blinking`**: Periodic visual pulse simulation; models count the total number of light blinks/pulses ($N$) across blinking frequencies ($F$).
+3. **`state_machine`**: Visual state transition simulation between states $\{A, B, C, D\}$; models count the total number of state transitions ($N$) across transition rates ($F$).
 
 ---
 
 ## 📐 1. The $N \times F$ Parametric Matrix Framework
 
-Instead of evaluating VLMs on static or uncontrolled videos, EventLapse evaluates models across a systematically controlled 2D matrix of **Event Count ($N$)** vs **Event Frequency ($F$, Hz)**:
+Each domain is evaluated across a 2D matrix of **Event Count ($N$)** vs **Event Frequency ($F$, Hz)**:
 
-| Task Name | Control Parameter Axis | Parameter Grid / Range | Video Duration |
-| :--- | :--- | :--- | :---: |
-| **Event Counting** | Bounce events $N$ | $N \in \{1, 2, 3, 4, 6, 8, 10, 12, 16\}$ | 20.0s |
-| **Event Frequency** | Frequency $f$ (Hz) | $f \in \{0.5, 1.0, 1.5, 2.0, 3.0, 4.0\}$ | 7.9s |
-| **Temporal Ordering** | Sequence length $L$ | $L \in \{3, 4, 6, 8, 10, 12, 16\}$ | 18.0s |
-| **Duration Comparison** | Duration ratio $r$ | $r \in \{1.05, 1.10, 1.25, 1.50, 2.00, 3.00\}$ | 13.0s |
-| **Causal Attribution** | Causal depth $C$ | $C \in \{1, 2, 3, 4, 5, 6\}$ | 18.0s |
-| **Future Prediction** | Prediction horizon $H$ | $H \in \{1, 2, 3, 4, 5\}$ | 10.0s |
-| **Long-Term Dependency** | Intervening swaps $D$ | $D \in \{0, 2, 4, 8, 12, 16\}$ | 17.0s |
+| Visual Domain | Event Type | Event Count Grid ($N$) | Frequency Grid ($F$, Hz) | Video Duration |
+| :--- | :--- | :--- | :--- | :---: |
+| **`bounce_ball`** | Wall contact bounces | $N \in \{2, 4, 8, 12\}$ | $F \in \{0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0\}$ | 24.0s |
+| **`blinking`** | Light blinks / pulses | $N \in \{2, 4, 8, 12\}$ | $F \in \{0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0\}$ | 24.0s |
+| **`state_machine`** | State transitions | $N \in \{2, 4, 8, 12\}$ | $F \in \{0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0\}$ | 24.0s |
 
-> **Note on Video Durations:** Each task enforces a **fixed constant video duration** across all control parameter values (padded with resting state prior to the question card). This guarantees that total video duration is never a confounder when measuring difficulty degradation.
+- **Event Count ($N$)**: The target quantity the VLM must count.
+- **Event Frequency ($F$)**: The rate of occurrence (events per second). Higher frequencies reduce the temporal margin between events, testing temporal resolution limits.
+- **Fixed Duration**: All videos use a fixed global duration ($24.0\text{s}$) so duration is never a confounder.
 
 ---
 
-## 🤖 2. Model Providers & API Gateways
+## 🤖 2. Supported Model Providers & Gateways
 
-EventLapse provides a unified model loading and execution layer (`load_model.py` and `BaseVideoModel` interface) supporting 6 primary model gateways:
+All evaluations execute via the unified `load_model.py` dispatch supporting 6 gateways:
 
-| Provider Key | Supported Models | Input Mode Capabilities | Env Variables Required |
+| Provider | Model Identifier | Input Modes Supported | Env Variables |
 | :--- | :--- | :--- | :--- |
-| **`google`** | `gemini-2.0-flash`, `gemini-1.5-pro`, `gemini-3.5-flash`, `gemini-2.0-flash-thinking` | Native Video + Frame Sequences | `GEMINI_API_KEY` |
+| **`google`** | `gemini-2.0-flash`, `gemini-1.5-pro`, `gemini-3.5-flash` | Native Video + Frame Sequences | `GEMINI_API_KEY` |
 | **`openai`** | `gpt-4o`, `gpt-4o-mini`, `o3-mini` | Frame Sequences | `OPENAI_API_KEY` |
 | **`anthropic`** | `claude-3-5-sonnet-20241022`, `claude-3-5-haiku-20241022` | Frame Sequences | `ANTHROPIC_API_KEY` |
-| **`bedrock`** | AWS Bedrock hosted VLMs | Frame Sequences | AWS Credentials |
-| **`fireworks`** | Fireworks AI hosted VLMs | Frame Sequences | `FIREWORKS_API_KEY` |
-| **`vllm`** | Open-source VLMs (`Qwen2-VL`, `LLaVA-NeXT-Video`, `InternVL2`, etc.) | Native Video / Frame Sequences | `VLLM_BASE_URL` (No API key required) |
+| **`vllm`** | `Qwen/Qwen2-VL-7B-Instruct`, `LLaVA-NeXT-Video`, `InternVL2` | Native Video / Frame Sequences | `VLLM_BASE_URL` (No API key needed) |
 
-### Serving Open-Source Models via vLLM
-To run evaluations against any open-source model using vLLM:
+### Hosting Open-Source Models via vLLM
 ```bash
 # 1. Launch vLLM OpenAI-compatible server on port 8000
 vllm serve Qwen/Qwen2-VL-7B-Instruct --port 8000
 
-# 2. Execute EventLapse evaluation sweep targeting localhost:8000
+# 2. Run EventLapse N x F evaluation against local vLLM
 python3 scripts/run_matrix_sweep.py \
   --provider vllm \
   --model-name Qwen/Qwen2-VL-7B-Instruct \
@@ -59,73 +56,65 @@ python3 scripts/run_matrix_sweep.py \
 
 ---
 
-## 🎛️ 3. Experimental Groups & Interventions
+## 🎛️ 3. Input Modes & Prompt Conditions
 
-The evaluation pipeline is divided into 4 structured experiment groups:
+### Input Modes (`--input-mode`)
+- **`native_video`**: Pass the raw `.mp4` video file directly to models supporting native video (e.g. Gemini, Qwen2-VL).
+- **`frames_Xfps`**: Sample frames at $X$ FPS (`frames_1fps`, `frames_2fps`, `frames_4fps`, `frames_8fps`, `frames_16fps`).
+- **`oracle_evidence`**: Supply key visual frames extracted around ground-truth event timestamps ($\pm 0.1\text{s}$).
 
-### Group 1: Base $N \times F$ Capability Boundaries
-Profiles raw model performance across task parameter axes using native video input and structured trace prompting. Operational capability boundaries ($x^*$) are estimated by identifying the maximum parameter difficulty where the lower 95% Wilson confidence interval bound meets or exceeds $\tau = 0.80$.
-
-### Group 2: MORSE Trace Diagnosis & Error Taxonomy
-Evaluates intermediate step-by-step reasoning outputs to classify failure modes into an 18-category error taxonomy (e.g. `missed_event`, `hallucinated_event`, `wrong_timestamp`, `wrong_root_cause`, `off_by_one_prediction`).
-
-### Group 3: Systematic Interventions
-1. **Group 3A — Frame Density Sweeps (`input_mode`)**:
-   Evaluates performance as frame sampling rate varies:
-   $$\text{Input Modes} \in \{\text{native\_video}, \text{frames\_1fps}, \text{frames\_2fps}, \text{frames\_4fps}, \text{frames\_8fps}, \text{frames\_16fps}\}$$
-2. **Group 3B — Oracle Evidence (`oracle_evidence`)**:
-   Provides models with oracle visual frames extracted specifically around ground-truth event windows ($\pm 0.1\text{s}$) to test whether perceptual resolution or reasoning capacity is the bottleneck.
-3. **Group 3C — Prompting & Thinking Controls (`prompt_condition`)**:
-   Tests model sensitivity to reasoning formats:
-   - `direct`: Direct answer response with `\boxed{}` formatting only.
-   - `structured_trace`: Full MORSE step-by-step CoT reasoning trace.
-   - `thinking`: Extended reasoning models (e.g. Gemini Thinking, o3-mini).
-
-### Group 4: Real-World Natural Transfer
-Tests whether synthetic capability breakdown boundaries ($x^*$) predict performance degradation on real-world video datasets (e.g., RepCount-A repetitive movement counting).
+### Prompt Conditions (`--prompt-condition`)
+- **`direct`**: Asks for direct final answer only in `\boxed{}`.
+- **`structured_trace`**: Requires step-by-step MORSE CoT event tracking before boxing the final count.
+- **`thinking`**: Enables extended reasoning mode on supported models (e.g., Gemini Thinking, o3-mini).
 
 ---
 
-## 📊 4. Measured Resource & Performance Metrics
+## 📊 4. Recorded Evaluation Metrics
 
-Every single evaluation call executed by `scripts/run_experiment.py` or `scripts/run_matrix_sweep.py` automatically measures and logs the following metrics:
+Every evaluation sample logged to `outputs/results_*.jsonl` explicitly records:
 
-| Metric Name | Field in Output JSONL | Description |
+| Metric | Output Field | Description |
 | :--- | :--- | :--- |
-| **Exact Match (EM)** | `exact_match_result` | Binary string/numeric match between model answer and ground truth |
-| **Supplied Frames** | `num_frames` | Total number of frames supplied to the model (native video frame count or extracted JPEG count) |
-| **Input Tokens** | `prompt_tokens` | Prompt token count sent to the API |
-| **Output Tokens** | `completion_tokens` | Candidate token count generated by the model |
-| **Total Tokens** | `total_tokens` | Combined token count (`prompt_tokens + completion_tokens`) |
-| **Estimated Cost ($USD)** | `estimated_cost_usd` | Estimated financial cost of the API call in USD |
-| **Latency (sec)** | `latency_sec` | Total end-to-end wall-clock latency of the inference call in seconds |
-| **Trace Precision ($P$)** | `trace_precision` | Ratio of model-reported steps that match true ground-truth events |
-| **Trace Recall ($R$)** | `trace_recall` | Ratio of ground-truth events correctly identified by the model |
-| **Trace F1 ($F_1$)** | `trace_f1` | Harmonic mean of Trace Precision and Trace Recall |
-| **Accidental Correctness** | `is_accidental_correct` | Correct final answer ($\text{EM}=1$) despite corrupted trace ($F_1 < 1.0$) |
-| **Reasoning Failure** | `is_reasoning_failure` | Perfect trace ($F_1 = 1.0$) but wrong final answer ($\text{EM}=0$) |
+| **Exact Match (EM)** | `exact_match_result` | Binary match between model predicted count and true count $N$ |
+| **Supplied Frames** | `num_frames` | Total number of video frames / extracted JPEGs supplied |
+| **Input Tokens** | `prompt_tokens` | Prompt token count |
+| **Output Tokens** | `completion_tokens` | Candidate token count |
+| **Total Tokens** | `total_tokens` | Total token count |
+| **Estimated Cost ($USD)** | `estimated_cost_usd` | Estimated financial cost of the call in USD |
+| **Latency (sec)** | `latency_sec` | Total end-to-end wall-clock inference time in seconds |
+| **Trace Precision ($P$)** | `trace_precision` | Ratio of model-reported events matching ground-truth events |
+| **Trace Recall ($R$)** | `trace_recall` | Ratio of true ground-truth events detected by model |
+| **Trace F1 ($F_1$)** | `trace_f1` | Harmonic mean: $F_1 = \frac{2 P R}{P + R}$ |
 
 ---
 
-## 🚀 5. Step-by-Step Execution Command Guide
+## 🚀 5. Command Reference & Workflow
 
-### Step 1: Run $N \times F$ Matrix Evaluation Sweeps
+### 1. Generate Synthetic Dataset Sweeps ($N \times F$)
+Generate videos for the 3 event counting domains across $N \in \{2, 4, 8, 12\}$ and $F \in \{0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4\}$:
 ```bash
-# Evaluate Gemini 2.0 Flash on native video across all tasks
+# Generate 5 seeds per configuration across all 3 domains
+python3 scripts/generate_dataset.py --num-seeds 5 --tasks all
+```
+
+### 2. Run $N \times F$ Evaluation Sweeps
+```bash
+# Run Gemini 2.0 Flash on native video
 python3 scripts/run_matrix_sweep.py \
   --provider google \
   --model-name gemini-2.0-flash \
   --input-mode native_video \
   --prompt-condition structured_trace
 
-# Evaluate GPT-4o on 2 FPS frame sequences
+# Run GPT-4o on 2 FPS frame sequences
 python3 scripts/run_matrix_sweep.py \
   --provider openai \
   --model-name gpt-4o \
   --input-mode frames_2fps \
   --prompt-condition structured_trace
 
-# Evaluate local open-source Qwen2-VL via vLLM
+# Run local vLLM model
 python3 scripts/run_matrix_sweep.py \
   --provider vllm \
   --model-name Qwen/Qwen2-VL-7B-Instruct \
@@ -133,7 +122,7 @@ python3 scripts/run_matrix_sweep.py \
   --prompt-condition structured_trace
 ```
 
-### Step 2: Run Frame-Density Intervention Sweeps
+### 3. Run Frame-Density Intervention Sweeps
 ```bash
 for fps in 1fps 2fps 4fps 8fps 16fps; do
   python3 scripts/run_matrix_sweep.py \
@@ -144,36 +133,16 @@ for fps in 1fps 2fps 4fps 8fps 16fps; do
 done
 ```
 
-### Step 3: Run Oracle Evidence Intervention Sweeps
-```bash
-python3 scripts/run_matrix_sweep.py \
-  --provider google \
-  --model-name gemini-2.0-flash \
-  --input-mode oracle_evidence \
-  --prompt-condition structured_trace
-```
-
-### Step 4: Run Master Automated Pipeline Script
-To run the full automated evaluation pipeline dry-run / integration check:
-```bash
-./scripts/run_all_experiments.sh
-```
-
-### Step 5: Aggregate Results & Compute Summaries
-Consolidate all evaluation JSONL files into CSV format and compute resource & cost summaries:
+### 4. Aggregate Results & Summarize Costs
 ```bash
 python3 scripts/aggregate_results.py
 ```
-This produces:
-- `outputs/aggregated_results.csv` — Full sample-level results table.
-- `outputs/mode_resource_summary.csv` — Summary table of input/output tokens, USD cost, latency, frame count, and accuracy per mode.
+Produces:
+- `outputs/aggregated_results.csv` — Full sample-level results.
+- `outputs/mode_resource_summary.csv` — Summary table of tokens, cost ($USD), latency, frame counts, and accuracy.
 
-### Step 6: Generate $N \times F$ Matrix Heatmaps & Figures
+### 5. Generate $N \times F$ Heatmaps
 ```bash
-# Render N x F matrix accuracy heatmaps (Event Count N vs Event Frequency F)
 python3 scripts/make_matrix_heatmaps.py
-
-# Render 7-panel paper figures
-python3 scripts/make_figures.py
 ```
-Outputs are saved as high-resolution PNGs in `outputs/`.
+Produces 2D accuracy heatmap matrices ($N$ vs $F$) saved in `outputs/`.
