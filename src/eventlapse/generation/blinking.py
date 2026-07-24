@@ -42,12 +42,21 @@ class BlinkingScene(Scene):
             obj = Triangle(color=obj_color, fill_opacity=0.2).scale(1.5)
 
         self.add(obj)
-        self.wait(0.5)
-        current_time = 0.5
 
         pulse_on_time = min(0.2, 0.4 / self.F)
         pulse_off_time = min(0.2, 0.4 / self.F)
         blink_interval = max(0.05, (1.0 / self.F) - (pulse_on_time + pulse_off_time))
+
+        if self.N == 0:
+            est_active_time = 0.0
+        else:
+            est_active_time = self.N * (pulse_on_time + pulse_off_time) + max(0, self.N - 1) * blink_interval
+
+        total_idle = max(0.4, FIXED_TASK_DURATION - est_active_time)
+        pre_wait = rng.uniform(0.3, max(0.3, total_idle - 0.3))
+
+        self.wait(pre_wait)
+        current_time = pre_wait
 
         for i in range(self.N):
             # Blink ON
@@ -68,9 +77,9 @@ class BlinkingScene(Scene):
                 self.wait(blink_interval)
                 current_time += blink_interval
 
-        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time)
-        self.wait(remaining_wait)
-        current_time += remaining_wait
+        post_wait = max(0.1, FIXED_TASK_DURATION - current_time)
+        self.wait(post_wait)
+        current_time += post_wait
         self.actual_duration = round(current_time, 2)
 
 class BlinkingGenerator(BaseTaskGenerator):

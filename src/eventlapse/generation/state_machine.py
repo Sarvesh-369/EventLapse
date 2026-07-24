@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, List
-from manim import Scene, Circle, Square, Triangle, Star, Text, UP, DOWN, LEFT, RIGHT
+from manim import Scene, Circle, Square, Triangle, Star, Text, UP, DOWN, LEFT, RIGHT, Transform
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
 from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
@@ -43,11 +43,20 @@ class StateMachineScene(Scene):
         label = Text(f"State {curr_state['id']}", font_size=32).next_to(active_obj, UP)
 
         self.add(active_obj, label)
-        self.wait(0.5)
-        current_time = 0.5
 
         transition_duration = min(0.4, 0.8 / self.F)
         dwell_time = max(0.05, (1.0 / self.F) - transition_duration)
+
+        if self.N == 0:
+            est_active_time = 0.0
+        else:
+            est_active_time = self.N * transition_duration + max(0, self.N - 1) * dwell_time
+
+        total_idle = max(0.4, FIXED_TASK_DURATION - est_active_time)
+        pre_wait = rng.uniform(0.3, max(0.3, total_idle - 0.3))
+
+        self.wait(pre_wait)
+        current_time = pre_wait
 
         for i in range(self.N):
             next_idx = (current_idx + rng.choice([1, 2, 3])) % 4
@@ -78,12 +87,10 @@ class StateMachineScene(Scene):
                 self.wait(dwell_time)
                 current_time += dwell_time
 
-        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time)
-        self.wait(remaining_wait)
-        current_time += remaining_wait
+        post_wait = max(0.1, FIXED_TASK_DURATION - current_time)
+        self.wait(post_wait)
+        current_time += post_wait
         self.actual_duration = round(current_time, 2)
-
-from manim import Transform
 
 class StateMachineGenerator(BaseTaskGenerator):
     @property

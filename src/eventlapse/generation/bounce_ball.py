@@ -47,8 +47,18 @@ class BounceBallScene(Scene):
         ball.move_to(u * start_offset)
 
         self.add(wall1, wall2, ball)
-        self.wait(0.2)
-        current_time = 0.2
+
+        one_way_duration = max(0.1, 1.0 / self.F)
+        if self.N == 0:
+            est_active_time = 2.0
+        else:
+            est_active_time = (self.N + 1) * one_way_duration
+
+        total_idle = max(0.4, FIXED_TASK_DURATION - est_active_time)
+        pre_wait = rng.uniform(0.3, max(0.3, total_idle - 0.3))
+
+        self.wait(pre_wait)
+        current_time = pre_wait
 
         if self.N == 0:
             end_offset = rng.uniform(-0.3 * wall_dist, 0.3 * wall_dist)
@@ -59,7 +69,6 @@ class BounceBallScene(Scene):
             first_target = (u if initial_target_positive else -u) * (wall_dist - ball_radius - 0.1)
             dist_first = abs(np.linalg.norm(first_target - (u * start_offset)))
 
-            one_way_duration = max(0.1, 1.0 / self.F)
             first_leg_duration = max(0.1, (dist_first / (2 * wall_dist)) * one_way_duration)
 
             self.play(ball.animate.move_to(first_target), run_time=first_leg_duration)
@@ -102,9 +111,9 @@ class BounceBallScene(Scene):
             self.play(ball.animate.move_to(end_target), run_time=final_leg_duration)
             current_time += final_leg_duration
 
-        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time)
-        self.wait(remaining_wait)
-        current_time += remaining_wait
+        post_wait = max(0.1, FIXED_TASK_DURATION - current_time)
+        self.wait(post_wait)
+        current_time += post_wait
         self.actual_duration = round(current_time, 2)
 
 class BounceBallGenerator(BaseTaskGenerator):
