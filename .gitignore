@@ -2,6 +2,7 @@
 .env
 .env.local
 *.log
+screenlog.*
 
 # Data and Outputs (Do not push to git)
 data/
