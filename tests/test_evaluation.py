@@ -1,10 +1,20 @@
 from eventlapse.evaluation.exact_match import compute_exact_match, compute_wilson_score_interval
 from eventlapse.evaluation.boundaries import estimate_operational_boundary
 from eventlapse.evaluation.morse_evaluator import MorseTraceEvaluator
+from eventlapse.inference.parser import parse_model_response, extract_boxed_answer
 
 def test_exact_match():
     assert compute_exact_match(" 4 ", "4") is True
+    assert compute_exact_match("16", "16") is True
     assert compute_exact_match("left", "Right") is False
+
+def test_boxed_parser_extraction():
+    raw_text = "Final Answer inside \\boxed{} (e.g. \\boxed{4})\n\n- 0.0s: start count 0\n- 1.0s: bounce 1\n... 16 bounces total ...\n\n\\boxed{16}"
+    pred_ans, evidence, valid = parse_model_response(raw_text)
+    assert pred_ans == "16"
+    assert valid is True
+    assert evidence is not None
+    assert evidence["boxed_answer"] == "16"
 
 def test_wilson_score_interval():
     acc, lower, upper = compute_wilson_score_interval(18, 20)
