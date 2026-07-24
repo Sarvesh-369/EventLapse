@@ -35,7 +35,7 @@ TASK_GENERATOR_MAP = {
 def main(num_seeds: int, seed_start: int, seed_end: int, tasks: str, output_dir: str, skip_existing: bool):
     """
     Generate synthetic task videos across 2D N x F matrix grid (Count N x Frequency F), executable traces JSON, ground-truth metadata, and questions.
-    Skipping existing videos is enabled by default to prevent re-rendering.
+    For N=0 (zero events), frequency is invariant, so only F=1.0 Hz is sampled.
     """
     ensure_directories()
     data_dir = Path(output_dir) if output_dir else get_data_dir()
@@ -57,9 +57,11 @@ def main(num_seeds: int, seed_start: int, seed_end: int, tasks: str, output_dir:
         logger.info(f"Processing task '{task_key}' across 2D N x F grid for seeds {seeds}...")
 
         for n_val in COUNT_GRID:
-            for f_val in FREQUENCY_GRID:
+            # For N=0 (no events), frequency is invariant. Sample only F=1.0 Hz to prevent duplicate generation.
+            active_freqs = [1.0] if n_val == 0 else FREQUENCY_GRID
+
+            for f_val in active_freqs:
                 for s in seeds:
-                    # Check for sample ID variants
                     sample_id_f = f"{task_key}_N{n_val}_F{f_val}_seed{s}"
                     target_video_f = data_dir / "videos" / task_key / f"{sample_id_f}.mp4"
 
@@ -81,7 +83,7 @@ def main(num_seeds: int, seed_start: int, seed_end: int, tasks: str, output_dir:
                         logger.info(f"Skipping re-render for existing video: {existing_video.name}")
                         gt_json_path = data_dir / "gt" / task_key / f"{active_sample_id}_gt.json"
 
-                        question = f"How many events occurred in the video?"
+                        question = "How many events occurred in the video?"
                         exact_answer = str(n_val)
 
                         if gt_json_path.exists():

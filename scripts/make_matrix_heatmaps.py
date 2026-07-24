@@ -84,6 +84,12 @@ def main(csv_file: str, output_dir: str):
                 aggfunc="mean"
             )
             col_label = "Event Frequency F (Hz)"
+
+            # For N=0, frequency is invariant. Broadcast N=0 accuracy across all frequency columns if missing
+            if 0 in pivot.index:
+                n0_mean = pivot.loc[0].dropna().mean()
+                if not np.isnan(n0_mean):
+                    pivot.loc[0] = pivot.loc[0].fillna(n0_mean)
         else:
             pivot = task_df.pivot_table(
                 index="control_value",
