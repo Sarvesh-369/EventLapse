@@ -1,84 +1,89 @@
 import random
-import math
 import hashlib
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, List
-from manim import Scene, Square, Text, Transform, UP, DOWN, LEFT, RIGHT
+from manim import Scene, Circle, Square, Triangle, Star, Text, UP, DOWN, LEFT, RIGHT
 
 from eventlapse.generation.base import BaseTaskGenerator, SyntheticSample
 from eventlapse.generation.renderer import render_manim_scene, save_sample_outputs, render_question_card
 from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
-FIXED_TASK_DURATION = 20.0
-STATES = ["A", "B", "C", "D"]
+FIXED_TASK_DURATION = 24.0
 
 class StateMachineScene(Scene):
-    def __init__(self, N: int, seed: int, **kwargs):
+    def __init__(self, N: int, F: float, seed: int, **kwargs):
         super().__init__(**kwargs)
-        self.N = int(N) # N is the number of state transitions
+        self.N = int(N)
+        self.F = float(F)
         self.seed = seed
         self.transition_events = []
         self.actual_duration = FIXED_TASK_DURATION
 
     def construct(self):
         set_seed(self.seed)
-        sample_hash = int(hashlib.md5(f"eventlapse_sm_{self.seed}_{self.N}".encode()).hexdigest(), 16)
+        sample_hash = int(hashlib.md5(f"eventlapse_state_{self.seed}_{self.N}_{self.F}".encode()).hexdigest(), 16)
         rng = random.Random(sample_hash)
 
         colors = get_nuisance_colors(self.seed, 4)
-        color_map = {s: colors[i] for i, s in enumerate(STATES)}
 
-        # Initial state
-        current_state = rng.choice(STATES)
-        sq = Square(side_length=2.0, color=color_map[current_state], fill_opacity=0.8)
-        lbl = Text(current_state, font_size=48)
-        self.add(sq, lbl)
+        states = [
+            {"id": "A", "shape": Circle(radius=0.9, color=colors[0], fill_opacity=0.8), "pos": LEFT * 2.5 + UP * 1.5},
+            {"id": "B", "shape": Square(side_length=1.8, color=colors[1], fill_opacity=0.8), "pos": RIGHT * 2.5 + UP * 1.5},
+            {"id": "C", "shape": Star(n=5, outer_radius=1.0, color=colors[2], fill_opacity=0.8), "pos": RIGHT * 2.5 + DOWN * 1.5},
+            {"id": "D", "shape": Triangle(color=colors[3], fill_opacity=0.8).scale(1.3), "pos": LEFT * 2.5 + DOWN * 1.5},
+        ]
+
+        current_idx = rng.randint(0, 3)
+        curr_state = states[current_idx]
+
+        active_obj = curr_state["shape"].copy().move_to(curr_state["pos"])
+        label = Text(f"State {curr_state['id']}", font_size=32).next_to(active_obj, UP)
+
+        self.add(active_obj, label)
         self.wait(0.5)
         current_time = 0.5
 
-        dwell_time = 0.8
+        transition_duration = min(0.4, 0.8 / self.F)
+        dwell_time = max(0.05, (1.0 / self.F) - transition_duration)
 
         for i in range(self.N):
-            available = [s for s in STATES if s != current_state]
-            next_state = rng.choice(available)
+            next_idx = (current_idx + rng.choice([1, 2, 3])) % 4
+            next_state = states[next_idx]
 
-            new_sq = Square(side_length=2.0, color=color_map[next_state], fill_opacity=0.8)
-            new_lbl = Text(next_state, font_size=48)
+            new_obj = next_state["shape"].copy().move_to(next_state["pos"])
+            new_label = Text(f"State {next_state['id']}", font_size=32).next_to(new_obj, UP)
 
             self.play(
-                sq.animate.set_fill(color_map[next_state], opacity=0.8),
-                Transform(lbl, new_lbl),
-                run_time=0.4
+                Transform(active_obj, new_obj),
+                Transform(label, new_label),
+                run_time=transition_duration
             )
-            current_time += 0.4
-            current_state = next_state
+            current_time += transition_duration
 
             self.transition_events.append({
                 "transition_index": i + 1,
                 "timestamp": round(current_time, 2),
-                "to_state": current_state,
+                "from_state": curr_state["id"],
+                "to_state": next_state["id"],
                 "running_count": i + 1
             })
+
+            current_idx = next_idx
+            curr_state = next_state
 
             if i < self.N - 1:
                 self.wait(dwell_time)
                 current_time += dwell_time
 
-        question_duration = 3.7
-        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time - question_duration)
+        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time)
         self.wait(remaining_wait)
         current_time += remaining_wait
-
-        render_question_card(
-            self,
-            question="How many state transitions occurred?",
-            format_instruction="Answer with a single integer (e.g. 4)."
-        )
-        current_time += question_duration
         self.actual_duration = round(current_time, 2)
+
+from manim import Transform
 
 class StateMachineGenerator(BaseTaskGenerator):
     @property
@@ -94,11 +99,13 @@ class StateMachineGenerator(BaseTaskGenerator):
         control_value: float,
         seed: int,
         output_dir: Path,
+        frequency: float = 1.0,
         resolution: List[int] = (1920, 1080),
         fps: int = 30
     ) -> SyntheticSample:
         N = int(control_value)
-        sample_id = f"sm_N{N}_seed{seed}"
+        F = float(frequency)
+        sample_id = f"state_N{N}_F{F}_seed{seed}"
 
         rendered_file, scene, temp_dir = render_manim_scene(
             StateMachineScene,
@@ -106,34 +113,36 @@ class StateMachineGenerator(BaseTaskGenerator):
             resolution=resolution,
             fps=fps,
             N=N,
+            F=F,
             seed=seed
         )
 
-        question = "How many state transitions occurred?"
+        question = "How many state transitions occurred in the video?"
         exact_answer = str(N)
 
         trace_data = {
             "steps": [
                 {
-                    "state": {"state": e["to_state"], "running_count": e["running_count"]},
-                    "event": {"type": "state_transition", "timestamp": e["timestamp"], "target_state": e["to_state"]},
+                    "state": {"current_state": e["to_state"], "running_count": e["running_count"]},
+                    "event": {"type": "state_transition", "timestamp": e["timestamp"], "from": e["from_state"], "to": e["to_state"]},
                     "operation": {"action": "increment_counter", "count": e["running_count"]}
                 } for e in scene.transition_events
             ],
             "final_count": N,
-            "events": scene.transition_events
+            "events": scene.transition_events,
+            "frequency_hz": F
         }
 
         cot_lines = [
             f"**Question:** {question} Show your reasoning and put the final answer in \\boxed{{}}",
             "",
-            "Let's analyze the video step by step.",
+            "Let me analyze the video step by step.",
             "",
             "### Scene Description",
-            "A visual state machine transitioning between states A, B, C, D."
+            f"Visual state machine transitions at frequency {F} Hz."
         ]
         for e in scene.transition_events:
-            cot_lines.append(f"- At {e['timestamp']:.2f}s: Transitioned to state {e['to_state']} (count={e['running_count']})")
+            cot_lines.append(f"- At {e['timestamp']:.2f}s: Transitioned from State {e['from_state']} to State {e['to_state']} (count={e['running_count']})")
 
         cot_lines.extend([
             "",
@@ -151,6 +160,7 @@ class StateMachineGenerator(BaseTaskGenerator):
             "task_name": self.task_name,
             "control_parameter": self.control_parameter_name,
             "control_value": N,
+            "frequency_hz": F,
             "seed": seed
         }
 
@@ -181,7 +191,7 @@ class StateMachineGenerator(BaseTaskGenerator):
             exact_answer=exact_answer,
             executable_trace=trace_data,
             cot_text=cot_text,
-            generation_config={"resolution": resolution, "fps": fps},
+            generation_config={"resolution": resolution, "fps": fps, "frequency": F},
             duration=rendered_duration,
             fps=fps,
             resolution=resolution,

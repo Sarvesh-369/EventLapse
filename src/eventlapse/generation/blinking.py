@@ -12,19 +12,20 @@ from eventlapse.generation.renderer import render_manim_scene, save_sample_outpu
 from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
-FIXED_TASK_DURATION = 20.0
+FIXED_TASK_DURATION = 24.0
 
 class BlinkingScene(Scene):
-    def __init__(self, N: int, seed: int, **kwargs):
+    def __init__(self, N: int, F: float, seed: int, **kwargs):
         super().__init__(**kwargs)
         self.N = int(N)
+        self.F = float(F)
         self.seed = seed
         self.blink_events = []
         self.actual_duration = FIXED_TASK_DURATION
 
     def construct(self):
         set_seed(self.seed)
-        sample_hash = int(hashlib.md5(f"eventlapse_blinking_{self.seed}_{self.N}".encode()).hexdigest(), 16)
+        sample_hash = int(hashlib.md5(f"eventlapse_blinking_{self.seed}_{self.N}_{self.F}".encode()).hexdigest(), 16)
         rng = random.Random(sample_hash)
 
         colors = get_nuisance_colors(self.seed, 2)
@@ -44,12 +45,14 @@ class BlinkingScene(Scene):
         self.wait(0.5)
         current_time = 0.5
 
-        blink_interval = 1.0
+        pulse_on_time = min(0.2, 0.4 / self.F)
+        pulse_off_time = min(0.2, 0.4 / self.F)
+        blink_interval = max(0.05, (1.0 / self.F) - (pulse_on_time + pulse_off_time))
 
         for i in range(self.N):
-            # Blink ON (high opacity and bright scale)
-            self.play(obj.animate.set_fill(obj_color, opacity=1.0).scale(1.1), run_time=0.2)
-            current_time += 0.2
+            # Blink ON
+            self.play(obj.animate.set_fill(obj_color, opacity=1.0).scale(1.1), run_time=pulse_on_time)
+            current_time += pulse_on_time
 
             self.blink_events.append({
                 "blink_index": i + 1,
@@ -58,24 +61,16 @@ class BlinkingScene(Scene):
             })
 
             # Blink OFF
-            self.play(obj.animate.set_fill(obj_color, opacity=0.2).scale(1.0 / 1.1), run_time=0.2)
-            current_time += 0.2
+            self.play(obj.animate.set_fill(obj_color, opacity=0.2).scale(1.0 / 1.1), run_time=pulse_off_time)
+            current_time += pulse_off_time
 
             if i < self.N - 1:
                 self.wait(blink_interval)
                 current_time += blink_interval
 
-        question_duration = 3.7
-        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time - question_duration)
+        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time)
         self.wait(remaining_wait)
         current_time += remaining_wait
-
-        render_question_card(
-            self,
-            question="How many times did the object blink?",
-            format_instruction="Answer with a single integer (e.g. 4)."
-        )
-        current_time += question_duration
         self.actual_duration = round(current_time, 2)
 
 class BlinkingGenerator(BaseTaskGenerator):
@@ -92,11 +87,13 @@ class BlinkingGenerator(BaseTaskGenerator):
         control_value: float,
         seed: int,
         output_dir: Path,
+        frequency: float = 1.0,
         resolution: List[int] = (1920, 1080),
         fps: int = 30
     ) -> SyntheticSample:
         N = int(control_value)
-        sample_id = f"blinking_N{N}_seed{seed}"
+        F = float(frequency)
+        sample_id = f"blinking_N{N}_F{F}_seed{seed}"
 
         rendered_file, scene, temp_dir = render_manim_scene(
             BlinkingScene,
@@ -104,6 +101,7 @@ class BlinkingGenerator(BaseTaskGenerator):
             resolution=resolution,
             fps=fps,
             N=N,
+            F=F,
             seed=seed
         )
 
@@ -119,16 +117,17 @@ class BlinkingGenerator(BaseTaskGenerator):
                 } for e in scene.blink_events
             ],
             "final_count": N,
-            "events": scene.blink_events
+            "events": scene.blink_events,
+            "frequency_hz": F
         }
 
         cot_lines = [
             f"**Question:** {question} Show your reasoning and put the final answer in \\boxed{{}}",
             "",
-            "Let's analyze the video step by step.",
+            "Let me analyze the video step by step.",
             "",
             "### Scene Description",
-            "An object pulsing ON and OFF."
+            f"An object pulsing ON and OFF at frequency {F} Hz."
         ]
         for e in scene.blink_events:
             cot_lines.append(f"- At {e['timestamp']:.2f}s: Object blinked ON (count={e['running_count']})")
@@ -149,6 +148,7 @@ class BlinkingGenerator(BaseTaskGenerator):
             "task_name": self.task_name,
             "control_parameter": self.control_parameter_name,
             "control_value": N,
+            "frequency_hz": F,
             "seed": seed
         }
 
@@ -179,7 +179,7 @@ class BlinkingGenerator(BaseTaskGenerator):
             exact_answer=exact_answer,
             executable_trace=trace_data,
             cot_text=cot_text,
-            generation_config={"resolution": resolution, "fps": fps},
+            generation_config={"resolution": resolution, "fps": fps, "frequency": F},
             duration=rendered_duration,
             fps=fps,
             resolution=resolution,

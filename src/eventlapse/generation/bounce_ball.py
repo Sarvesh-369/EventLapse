@@ -13,19 +13,20 @@ from eventlapse.generation.renderer import render_manim_scene, save_sample_outpu
 from eventlapse.utils.caching import compute_file_checksum
 from eventlapse.utils.seeds import set_seed, get_nuisance_colors
 
-FIXED_TASK_DURATION = 20.0
+FIXED_TASK_DURATION = 24.0
 
 class BounceBallScene(Scene):
-    def __init__(self, N: int, seed: int, **kwargs):
+    def __init__(self, N: int, F: float, seed: int, **kwargs):
         super().__init__(**kwargs)
         self.N = int(N)
+        self.F = float(F)
         self.seed = seed
         self.contact_events = []
         self.actual_duration = FIXED_TASK_DURATION
 
     def construct(self):
         set_seed(self.seed)
-        sample_hash = int(hashlib.md5(f"eventlapse_bounce_{self.seed}_{self.N}".encode()).hexdigest(), 16)
+        sample_hash = int(hashlib.md5(f"eventlapse_bounce_{self.seed}_{self.N}_{self.F}".encode()).hexdigest(), 16)
         rng = random.Random(sample_hash)
 
         colors = get_nuisance_colors(self.seed, 3)
@@ -50,7 +51,6 @@ class BounceBallScene(Scene):
         current_time = 0.2
 
         if self.N == 0:
-            # Ball floats in interior space without contacting either wall
             end_offset = rng.uniform(-0.3 * wall_dist, 0.3 * wall_dist)
             self.play(ball.animate.move_to(u * end_offset), run_time=2.0)
             current_time += 2.0
@@ -59,7 +59,9 @@ class BounceBallScene(Scene):
             first_target = (u if initial_target_positive else -u) * (wall_dist - ball_radius - 0.1)
             dist_first = abs(np.linalg.norm(first_target - (u * start_offset)))
 
-            first_leg_duration = max(0.3, dist_first / 3.0)
+            one_way_duration = max(0.1, 1.0 / self.F)
+            first_leg_duration = max(0.1, (dist_first / (2 * wall_dist)) * one_way_duration)
+
             self.play(ball.animate.move_to(first_target), run_time=first_leg_duration)
             current_time += first_leg_duration
 
@@ -73,7 +75,6 @@ class BounceBallScene(Scene):
             })
 
             current_target_positive = not initial_target_positive
-            one_way_duration = 1.0
 
             for i in range(1, self.N):
                 target_pos = (u if current_target_positive else -u) * (wall_dist - ball_radius - 0.1)
@@ -97,21 +98,13 @@ class BounceBallScene(Scene):
             last_wall_val = (u if not current_target_positive else -u) * (wall_dist - ball_radius - 0.1)
             dist_end = abs(np.linalg.norm(end_target - last_wall_val))
 
-            final_leg_duration = max(0.3, dist_end / 3.0)
+            final_leg_duration = max(0.1, (dist_end / (2 * wall_dist)) * one_way_duration)
             self.play(ball.animate.move_to(end_target), run_time=final_leg_duration)
             current_time += final_leg_duration
 
-        question_duration = 3.7
-        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time - question_duration)
+        remaining_wait = max(0.2, FIXED_TASK_DURATION - current_time)
         self.wait(remaining_wait)
         current_time += remaining_wait
-
-        render_question_card(
-            self,
-            question="How many times did the ball contact the walls?",
-            format_instruction="Answer with a single integer (e.g. 4)."
-        )
-        current_time += question_duration
         self.actual_duration = round(current_time, 2)
 
 class BounceBallGenerator(BaseTaskGenerator):
@@ -128,11 +121,13 @@ class BounceBallGenerator(BaseTaskGenerator):
         control_value: float,
         seed: int,
         output_dir: Path,
+        frequency: float = 1.0,
         resolution: List[int] = (1920, 1080),
         fps: int = 30
     ) -> SyntheticSample:
         N = int(control_value)
-        sample_id = f"bounce_N{N}_seed{seed}"
+        F = float(frequency)
+        sample_id = f"bounce_N{N}_F{F}_seed{seed}"
 
         rendered_file, scene, temp_dir = render_manim_scene(
             BounceBallScene,
@@ -140,6 +135,7 @@ class BounceBallGenerator(BaseTaskGenerator):
             resolution=resolution,
             fps=fps,
             N=N,
+            F=F,
             seed=seed
         )
 
@@ -155,16 +151,17 @@ class BounceBallGenerator(BaseTaskGenerator):
                 } for e in scene.contact_events
             ],
             "final_count": N,
-            "events": scene.contact_events
+            "events": scene.contact_events,
+            "frequency_hz": F
         }
 
         cot_lines = [
             f"**Question:** {question} Show your reasoning and put the final answer in \\boxed{{}}",
             "",
-            "Let's analyze the video step by step.",
+            "Let me analyze the video step by step.",
             "",
             "### Scene Description",
-            "Ball moving near two walls."
+            f"Ball bouncing between two walls at frequency {F} Hz."
         ]
         for e in scene.contact_events:
             cot_lines.append(f"- At {e['timestamp']:.2f}s: Ball contacted {e['wall_identity']} (count={e['running_count']})")
@@ -185,6 +182,7 @@ class BounceBallGenerator(BaseTaskGenerator):
             "task_name": self.task_name,
             "control_parameter": self.control_parameter_name,
             "control_value": N,
+            "frequency_hz": F,
             "seed": seed
         }
 
@@ -215,7 +213,7 @@ class BounceBallGenerator(BaseTaskGenerator):
             exact_answer=exact_answer,
             executable_trace=trace_data,
             cot_text=cot_text,
-            generation_config={"resolution": resolution, "fps": fps},
+            generation_config={"resolution": resolution, "fps": fps, "frequency": F},
             duration=rendered_duration,
             fps=fps,
             resolution=resolution,
