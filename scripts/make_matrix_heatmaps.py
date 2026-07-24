@@ -16,7 +16,7 @@ from eventlapse.utils.paths import get_outputs_dir
 @click.option("--output-dir", default=None, help="Directory to save heatmaps")
 def main(csv_file: str, output_dir: str):
     """
-    Generates N x F matrix accuracy heatmaps for temporal & spatial reasoning tasks.
+    Generates 2D N x F matrix accuracy heatmaps (Count N vs Frequency F) for Event Counting tasks.
     """
     out_dir = Path(output_dir) if output_dir else get_outputs_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -25,18 +25,23 @@ def main(csv_file: str, output_dir: str):
 
     if not input_path.exists():
         print(f"Input aggregated CSV not found at {input_path}. Creating sample N x F matrix heatmap template...")
-        # Create a sample 4x6 N x F matrix heatmap template
-        counts = [2, 4, 8, 12]
-        freqs = [0.5, 1.0, 1.5, 2.0, 3.0, 4.0]
+        counts = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12]
+        freqs = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
 
         dummy_matrix = np.array([
-            [1.00, 0.95, 0.90, 0.85, 0.70, 0.50],
-            [0.95, 0.90, 0.82, 0.75, 0.60, 0.40],
-            [0.85, 0.78, 0.70, 0.62, 0.45, 0.30],
-            [0.70, 0.60, 0.52, 0.40, 0.25, 0.15],
+            [1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00],
+            [1.00, 0.95, 0.90, 0.85, 0.75, 0.65, 0.55, 0.45],
+            [0.95, 0.90, 0.82, 0.75, 0.60, 0.50, 0.40, 0.30],
+            [0.90, 0.85, 0.75, 0.65, 0.50, 0.40, 0.30, 0.20],
+            [0.85, 0.78, 0.70, 0.55, 0.40, 0.30, 0.20, 0.10],
+            [0.80, 0.70, 0.60, 0.45, 0.30, 0.20, 0.10, 0.05],
+            [0.75, 0.65, 0.50, 0.35, 0.20, 0.10, 0.05, 0.00],
+            [0.65, 0.50, 0.35, 0.20, 0.10, 0.05, 0.00, 0.00],
+            [0.50, 0.35, 0.20, 0.10, 0.05, 0.00, 0.00, 0.00],
+            [0.35, 0.20, 0.10, 0.05, 0.00, 0.00, 0.00, 0.00],
         ])
 
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(12, 7))
         sns.heatmap(
             dummy_matrix,
             annot=True,
@@ -60,7 +65,6 @@ def main(csv_file: str, output_dir: str):
 
     df = pd.read_csv(input_path)
 
-    # Check if control parameter columns exist
     if "task" not in df.columns or "exact_match_result" not in df.columns:
         print("Required columns ('task', 'exact_match_result') not found in CSV.")
         return
@@ -72,16 +76,25 @@ def main(csv_file: str, output_dir: str):
         if task_df.empty:
             continue
 
-        # Check for control parameters or multi-axis parameters
-        pivot = task_df.pivot_table(
-            index="control_value",
-            columns="input_mode",
-            values="exact_match_result",
-            aggfunc="mean"
-        )
+        if "frequency_hz" in task_df.columns:
+            pivot = task_df.pivot_table(
+                index="control_value",
+                columns="frequency_hz",
+                values="exact_match_result",
+                aggfunc="mean"
+            )
+            col_label = "Event Frequency F (Hz)"
+        else:
+            pivot = task_df.pivot_table(
+                index="control_value",
+                columns="input_mode",
+                values="exact_match_result",
+                aggfunc="mean"
+            )
+            col_label = "Input Mode / Sampling Rate"
 
         if not pivot.empty:
-            plt.figure(figsize=(10, 6))
+            plt.figure(figsize=(10, 7))
             sns.heatmap(
                 pivot,
                 annot=True,
@@ -91,9 +104,9 @@ def main(csv_file: str, output_dir: str):
                 vmax=1.0,
                 cbar_kws={"label": "Exact Match Accuracy"}
             )
-            plt.title(f"{task_name.replace('_', ' ').title()} - N x F Accuracy Matrix", fontsize=14, pad=15)
-            plt.xlabel("Input Mode / Sampling Rate", fontsize=12)
-            plt.ylabel("Control Parameter Value", fontsize=12)
+            plt.title(f"{task_name.replace('_', ' ').title()} - 2D N x F Accuracy Matrix", fontsize=14, pad=15)
+            plt.xlabel(col_label, fontsize=12)
+            plt.ylabel("Event Count N", fontsize=12)
             plt.tight_layout()
 
             out_path = out_dir / f"heatmap_matrix_{task_name}.png"
