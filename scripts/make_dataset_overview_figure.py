@@ -98,14 +98,15 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    fig = plt.figure(figsize=(18, 10.5), dpi=300, facecolor="white")
+    fig = plt.figure(figsize=(18, 10.8), dpi=300, facecolor="white")
     col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.03, left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     for c_idx, tinfo in enumerate(tasks_info):
+        # Slightly increased hspace (0.035) for subtle breathing room above and below frame grid
         col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
-                                                   height_ratios=[0.85, 5.2, 4.2], hspace=0.015)
+                                                   height_ratios=[0.85, 5.2, 4.2], hspace=0.035)
 
-        # --- 1. Header Box (Larger Font Sizes) ---
+        # --- 1. Header Box ---
         ax_header = fig.add_subplot(col_sub[0])
         ax_header.axis("off")
 
@@ -158,7 +159,7 @@ def build_dataset_overview_figure(output_path: Path):
                           fontsize=12.0, fontweight="bold", color="white", ha="right",
                           bbox=dict(boxstyle="round,pad=0.25", facecolor="#e63946", edgecolor="none", alpha=0.95))
 
-        # --- 3. Trace Box (Larger Font Sizes) ---
+        # --- 3. Trace Box ---
         ax_trace = fig.add_subplot(col_sub[2])
         ax_trace.axis("off")
 
