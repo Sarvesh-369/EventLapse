@@ -125,32 +125,43 @@ class GeminiAdapter(BaseVideoModel):
         start_time = time.time()
         max_retries = kwargs.get("max_retries", 3)
         backoff = 2.0
+        fps = kwargs.get("fps", None)
 
         for attempt in range(max_retries):
             try:
-                video_file = self._upload_video_with_cache(video_path)
-
                 gen_config = self._build_gen_config(
                     system_instruction=system_instruction,
                     thinking_mode=thinking_mode,
                     response_schema=response_schema
                 )
 
-                # Check if custom native video FPS sampling is specified
-                fps = kwargs.get("fps", None)
-                if fps and self.types:
-                    try:
-                        video_part = self.types.Part.from_uri(
-                            file_uri=video_file.uri,
-                            mime_type="video/mp4",
-                            video_metadata=self.types.VideoMetadata(fps=float(fps))
-                        )
-                        contents = [video_part, prompt]
-                    except Exception as ex:
-                        logger.warning(f"VideoMetadata fps parameter failed ({ex}), falling back to default video part.")
-                        contents = [video_file, prompt]
+                # For video files under 20MB, use inline_data with VideoMetadata
+                if video_path.exists() and video_path.stat().st_size < 20 * 1024 * 1024 and self.types:
+                    with open(video_path, "rb") as vf:
+                        v_bytes = vf.read()
+
+                    part_kwargs = {
+                        "inline_data": self.types.Blob(data=v_bytes, mime_type="video/mp4")
+                    }
+                    if fps:
+                        part_kwargs["video_metadata"] = self.types.VideoMetadata(fps=float(fps))
+
+                    video_part = self.types.Part(**part_kwargs)
+                    contents = [video_part, prompt]
                 else:
-                    contents = [video_file, prompt]
+                    video_file = self._upload_video_with_cache(video_path)
+                    if fps and self.types:
+                        try:
+                            video_part = self.types.Part.from_uri(
+                                file_uri=video_file.uri,
+                                mime_type="video/mp4",
+                                video_metadata=self.types.VideoMetadata(fps=float(fps))
+                            )
+                            contents = [video_part, prompt]
+                        except Exception:
+                            contents = [video_file, prompt]
+                    else:
+                        contents = [video_file, prompt]
 
                 response = self.client.models.generate_content(
                     model=self.config.model_name,
