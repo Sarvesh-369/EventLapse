@@ -47,7 +47,6 @@ def build_dataset_overview_figure(output_path: Path):
                 "Ball bouncing between walls at 1.0 Hz.",
                 "• t = 6.49s: wall_contact (wall_negative) ➔ c=1",
                 "• t = 7.49s: wall_contact (wall_positive) ➔ c=2",
-                "Total Events: 2",
                 "Final Answer: 2"
             ]
         },
@@ -62,7 +61,6 @@ def build_dataset_overview_figure(output_path: Path):
                 "Scene Description:",
                 "An object pulsing ON and OFF at 1.0 Hz.",
                 "• t = 6.72s: blink_pulse (state: ON) ➔ c=1",
-                "Total Events: 1",
                 "Final Answer: 1"
             ]
         },
@@ -79,7 +77,6 @@ def build_dataset_overview_figure(output_path: Path):
                 "• t = 5.65s: transition (State D ➔ State A) ➔ c=1",
                 "• t = 6.32s: transition (State A ➔ State D) ➔ c=2",
                 "• t = 6.99s: transition (State D ➔ State B) ➔ c=3",
-                "Total Events: 3",
                 "Final Answer: 3"
             ]
         }
@@ -89,13 +86,13 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    # Figure height accommodating up to 7 trace lines (State Machine)
-    fig = plt.figure(figsize=(18, 8.8), dpi=300, facecolor="white")
+    # Figure height accommodating up to 6 trace lines comfortably
+    fig = plt.figure(figsize=(18, 8.4), dpi=300, facecolor="white")
     col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.03, left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     for c_idx, tinfo in enumerate(tasks_info):
         col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
-                                                   height_ratios=[0.85, 5.2, 2.75], hspace=0.035)
+                                                   height_ratios=[0.85, 5.2, 2.45], hspace=0.035)
 
         # --- 1. Header Box ---
         ax_header = fig.add_subplot(col_sub[0])
@@ -163,11 +160,11 @@ def build_dataset_overview_figure(output_path: Path):
                                      clip_on=False)
         ax_trace.add_patch(trace_patch)
 
-        ax_trace.text(0.04, 0.90, "Executable Ground-Truth Trace", transform=ax_trace.transAxes,
+        ax_trace.text(0.04, 0.88, "Executable Ground-Truth Trace", transform=ax_trace.transAxes,
                       fontsize=16.5, fontweight="bold", color=tinfo["color"], va="center")
 
-        y_pos = 0.76
-        line_step = 0.118 if len(tinfo["cot_lines"]) > 6 else 0.125
+        y_pos = 0.72
+        line_step = 0.130 if len(tinfo["cot_lines"]) > 5 else 0.140
         for line in tinfo["cot_lines"]:
             if line.endswith(":"):
                 ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
@@ -175,9 +172,6 @@ def build_dataset_overview_figure(output_path: Path):
             elif line.startswith("Final Answer:"):
                 ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
                               fontsize=15.5, fontweight="bold", color="#111111", va="center")
-            elif line.startswith("Total Events:"):
-                ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
-                              fontsize=13.5, fontweight="bold", color="#333333", fontfamily="monospace", va="center")
             else:
                 ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
                               fontsize=12.5, color="#222222", fontfamily="monospace", va="center")
