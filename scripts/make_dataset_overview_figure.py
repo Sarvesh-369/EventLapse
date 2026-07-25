@@ -98,13 +98,13 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    fig = plt.figure(figsize=(18, 10.8), dpi=300, facecolor="white")
+    # Tuned figure height (9.2) and trace panel ratio (3.05) to eliminate empty bottom space
+    fig = plt.figure(figsize=(18, 9.2), dpi=300, facecolor="white")
     col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.03, left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     for c_idx, tinfo in enumerate(tasks_info):
-        # Slightly increased hspace (0.035) for subtle breathing room above and below frame grid
         col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
-                                                   height_ratios=[0.85, 5.2, 4.2], hspace=0.035)
+                                                   height_ratios=[0.85, 5.2, 3.05], hspace=0.035)
 
         # --- 1. Header Box ---
         ax_header = fig.add_subplot(col_sub[0])
@@ -159,7 +159,7 @@ def build_dataset_overview_figure(output_path: Path):
                           fontsize=12.0, fontweight="bold", color="white", ha="right",
                           bbox=dict(boxstyle="round,pad=0.25", facecolor="#e63946", edgecolor="none", alpha=0.95))
 
-        # --- 3. Trace Box ---
+        # --- 3. Trace Box (Trimmed height to fit content perfectly) ---
         ax_trace = fig.add_subplot(col_sub[2])
         ax_trace.axis("off")
 
@@ -169,10 +169,10 @@ def build_dataset_overview_figure(output_path: Path):
                                      clip_on=False)
         ax_trace.add_patch(trace_patch)
 
-        ax_trace.text(0.04, 0.92, "Programmatically Generated Trace", transform=ax_trace.transAxes,
+        ax_trace.text(0.04, 0.89, "Programmatically Generated Trace", transform=ax_trace.transAxes,
                       fontsize=16.5, fontweight="bold", color=tinfo["color"], va="center")
 
-        y_pos = 0.80
+        y_pos = 0.76
         for line in tinfo["cot_lines"]:
             if not line:
                 y_pos -= 0.025
@@ -188,7 +188,7 @@ def build_dataset_overview_figure(output_path: Path):
                 ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
                               fontsize=13.5, color="#222222", fontfamily="monospace", va="center")
 
-            y_pos -= 0.088
+            y_pos -= 0.092
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.01)
