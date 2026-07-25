@@ -39,31 +39,31 @@ def build_dataset_overview_figure(output_path: Path):
             "domain": "Bounce Ball",
             "question": "Question: How many times did the ball contact the walls?",
             "video_path": demo_dir / "videos/bounce_ball/bounce_N2_F1.0_seed0.mp4",
-            "sample_ts": [5.50, 6.00, 6.49, 6.80, 7.10, 7.40],
-            "event_indices": [2],
+            "sample_ts": [5.50, 6.49, 7.00, 7.49, 8.00, 8.50],
+            "event_indices": [1, 3],
             "color": "#1f77b4",
             "cot_lines": [
                 "Scene Description:",
                 "Ball bouncing between walls at 1.0 Hz.",
                 "• t = 6.49s: wall_contact (wall_negative) ➔ c=1",
-                "Total Events: 1",
-                "Final Answer: 1"
+                "• t = 7.49s: wall_contact (wall_positive) ➔ c=2",
+                "Total Events: 2",
+                "Final Answer: 2"
             ]
         },
         {
             "domain": "Blinking",
             "question": "Question: How many times did the object blink?",
             "video_path": demo_dir / "videos/blinking/blinking_N2_F1.0_seed0.mp4",
-            "sample_ts": [5.70, 6.72, 7.20, 7.72, 8.20, 8.70],
-            "event_indices": [1, 3],
+            "sample_ts": [5.70, 6.20, 6.72, 7.10, 7.40, 7.80],
+            "event_indices": [2],
             "color": "#d95f02",
             "cot_lines": [
                 "Scene Description:",
                 "An object pulsing ON and OFF at 1.0 Hz.",
                 "• t = 6.72s: blink_pulse (state: ON) ➔ c=1",
-                "• t = 7.72s: blink_pulse (state: ON) ➔ c=2",
-                "Total Events: 2",
-                "Final Answer: 2"
+                "Total Events: 1",
+                "Final Answer: 1"
             ]
         },
         {
