@@ -51,7 +51,7 @@ def build_dataset_overview_figure(output_path: Path):
                 "Step 1: Track Contact Events",
                 "Total wall contact events detected: 2.",
                 "",
-                "Final Answer:  \\boxed{2}"
+                "Final Answer: 2"
             ]
         },
         {
@@ -70,7 +70,7 @@ def build_dataset_overview_figure(output_path: Path):
                 "Step 1: Track Blink Pulses",
                 "Total blinks detected: 2.",
                 "",
-                "Final Answer:  \\boxed{2}"
+                "Final Answer: 2"
             ]
         },
         {
@@ -89,7 +89,7 @@ def build_dataset_overview_figure(output_path: Path):
                 "Step 1: Track State Transitions",
                 "Total state transitions detected: 2.",
                 "",
-                "Final Answer:  \\boxed{2}"
+                "Final Answer: 2"
             ]
         }
     ]
@@ -98,7 +98,6 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    # Widescreen layout with ultra-tight spacing between columns and vertical sections
     fig = plt.figure(figsize=(18, 9.8), dpi=300, facecolor="white")
     col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.03, left=0.01, right=0.99, top=0.99, bottom=0.01)
 
@@ -182,11 +181,8 @@ def build_dataset_overview_figure(output_path: Path):
                 ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
                               fontsize=13.0, fontweight="bold", color="#111111", va="center")
             elif line.startswith("Final Answer:"):
-                ax_trace.text(0.05, y_pos, "Final Answer:", transform=ax_trace.transAxes,
-                              fontsize=14.0, fontweight="bold", color="#111111", va="center")
-                ax_trace.text(0.48, y_pos, "\\boxed{2}", transform=ax_trace.transAxes,
-                              fontsize=15.0, fontweight="bold", color="white", va="center", ha="center",
-                              bbox=dict(boxstyle="round,pad=0.35", facecolor="#e63946", edgecolor="none"))
+                ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
+                              fontsize=13.5, fontweight="bold", color="#111111", va="center")
             else:
                 ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
                               fontsize=11.8, color="#222222", fontfamily="monospace", va="center")
