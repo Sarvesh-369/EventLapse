@@ -53,14 +53,14 @@ def build_dataset_overview_figure(output_path: Path):
         {
             "domain": "Blinking",
             "question": "Question: How many times did the object blink?",
-            "video_path": demo_dir / "videos/blinking/blinking_N2_F1.0_seed0.mp4",
-            "sample_ts": [5.70, 6.20, 6.72, 7.10, 7.40, 7.80],
+            "video_path": demo_dir / "videos/blinking/blinking_N1_F1.0_seed0.mp4",
+            "sample_ts": [17.50, 18.50, 19.22, 20.00, 21.00, 22.00],
             "event_indices": [2],
             "color": "#d95f02",
             "cot_lines": [
                 "Scene Description:",
                 "An object pulsing ON and OFF at 1.0 Hz.",
-                "• t = 6.72s: blink_pulse (state: ON) ➔ c=1",
+                "• t = 19.22s: blink_pulse (state: ON) ➔ c=1",
                 "Final Answer: 1"
             ]
         },
@@ -86,7 +86,6 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    # Figure height accommodating up to 6 trace lines comfortably
     fig = plt.figure(figsize=(18, 8.4), dpi=300, facecolor="white")
     col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.03, left=0.01, right=0.99, top=0.99, bottom=0.01)
 
