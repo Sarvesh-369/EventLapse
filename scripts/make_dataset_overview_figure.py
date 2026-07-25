@@ -40,14 +40,15 @@ def build_dataset_overview_figure(output_path: Path):
             "subtitle": "Physical Motion & Wall Contact Tracking",
             "question": "Question: How many times did the ball contact the walls?",
             "video_path": demo_dir / "videos/bounce_ball/bounce_N2_F1.0_seed0.mp4",
-            "sample_ts": [5.50, 6.49, 7.00, 7.49, 8.50],
+            # 6 frames: 2 per row x 3 rows
+            "sample_ts": [5.50, 6.49, 7.00, 7.49, 8.00, 8.50],
             "event_indices": [1, 3],
             "color": "#1f77b4",
             "cot_lines": [
                 "### Scene Description",
-                "Ball bouncing between two walls at 1.0 Hz.",
-                "• At 6.49s: Ball contacted wall_negative (c=1)",
-                "• At 7.49s: Ball contacted wall_positive (c=2)",
+                "Ball bouncing between walls at 1.0 Hz.",
+                "• At 6.49s: Contact wall_negative (c=1)",
+                "• At 7.49s: Contact wall_positive (c=2)",
                 "",
                 "### Step 1: Track Contact Events",
                 "Total wall contact events detected: 2.",
@@ -60,7 +61,7 @@ def build_dataset_overview_figure(output_path: Path):
             "subtitle": "Luminance & Opacity Pulse Tracking",
             "question": "Question: How many times did the object blink?",
             "video_path": demo_dir / "videos/blinking/blinking_N2_F1.0_seed0.mp4",
-            "sample_ts": [5.70, 6.72, 7.20, 7.72, 8.70],
+            "sample_ts": [5.70, 6.72, 7.20, 7.72, 8.20, 8.70],
             "event_indices": [1, 3],
             "color": "#d95f02",
             "cot_lines": [
@@ -79,15 +80,15 @@ def build_dataset_overview_figure(output_path: Path):
             "domain": "State Machine Domain",
             "subtitle": "Discrete Visual State Transitions",
             "question": "Question: How many state transitions occurred in the video?",
-            "video_path": demo_dir / "videos/state_machine/state_N2_F1.0_seed0.mp4",
-            "sample_ts": [5.10, 6.16, 6.65, 7.16, 8.10],
+            "video_path": demo_dir / "videos/state_machine/state_N2_F1.0_seed1.mp4",
+            "sample_ts": [2.50, 3.09, 3.60, 4.09, 4.60, 5.10],
             "event_indices": [1, 3],
             "color": "#2ca02c",
             "cot_lines": [
                 "### Scene Description",
-                "Visual state machine transitions at 1.0 Hz.",
-                "• At 6.16s: Transition State A ➔ State B (c=1)",
-                "• At 7.16s: Transition State B ➔ State A (c=2)",
+                "Visual state transitions at 1.0 Hz.",
+                "• At 3.09s: Transition State D ➔ State C (c=1)",
+                "• At 4.09s: Transition State C ➔ State A (c=2)",
                 "",
                 "### Step 1: Track State Transitions",
                 "Total state transitions detected: 2.",
@@ -101,13 +102,13 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    # Widescreen 3-column figure layout
-    fig = plt.figure(figsize=(20, 11), dpi=300, facecolor="white")
-    col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.16, left=0.02, right=0.98, top=0.96, bottom=0.02)
+    # Compact figure layout with minimal margins
+    fig = plt.figure(figsize=(18, 12), dpi=300, facecolor="white")
+    col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.12, left=0.015, right=0.985, top=0.98, bottom=0.015)
 
     for c_idx, tinfo in enumerate(tasks_info):
         col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
-                                                   height_ratios=[0.8, 3.8, 3.2], hspace=0.14)
+                                                   height_ratios=[0.7, 5.0, 3.3], hspace=0.10)
 
         # --- 1. Header Box (Domain & Prompt) ---
         ax_header = fig.add_subplot(col_sub[0])
@@ -115,37 +116,30 @@ def build_dataset_overview_figure(output_path: Path):
 
         header_patch = FancyBboxPatch((0.0, 0.0), 1.0, 1.0, transform=ax_header.transAxes,
                                       facecolor="#f8f9fa", edgecolor=tinfo["color"], linewidth=2.5,
-                                      boxstyle=BoxStyle("Round", pad=0.02))
+                                      boxstyle=BoxStyle("Round", pad=0.01))
         ax_header.add_patch(header_patch)
 
-        ax_header.text(0.5, 0.72, tinfo["domain"], transform=ax_header.transAxes,
+        ax_header.text(0.5, 0.74, tinfo["domain"], transform=ax_header.transAxes,
                        fontsize=15, fontweight="bold", color=tinfo["color"], ha="center", va="center")
-        ax_header.text(0.5, 0.44, tinfo["subtitle"], transform=ax_header.transAxes,
+        ax_header.text(0.5, 0.46, tinfo["subtitle"], transform=ax_header.transAxes,
                        fontsize=10.5, fontweight="bold", color="#555555", ha="center", va="center")
         ax_header.text(0.5, 0.18, tinfo["question"], transform=ax_header.transAxes,
                        fontsize=9.5, fontstyle="italic", color="#111111", ha="center", va="center")
 
-        # --- 2. 5 Large Frames arranged in 2 Horizontal Rows (Row 1: 3 frames, Row 2: 2 frames) ---
+        # --- 2. 6 Large Frames arranged in 3 Rows of 2 Frames Each (2 per row) ---
         extracted = [(ts, extract_frame_at_timestamp(tinfo["video_path"], ts)) for ts in tinfo["sample_ts"]]
 
         ax_frames_container = fig.add_subplot(col_sub[1])
         ax_frames_container.axis("off")
 
-        frame_rows_gs = gridspec.GridSpecFromSubplotSpec(2, 6, subplot_spec=col_sub[1], hspace=0.25, wspace=0.08)
-
-        # Frame 0, 1, 2 in Row 1 (spanning 2 columns each: cols 0-1, 2-3, 4-5)
-        # Frame 3, 4 in Row 2 (centered: cols 1-2, 3-4)
-        frame_positions = [
-            (0, slice(0, 2)), # Frame 0
-            (0, slice(2, 4)), # Frame 1 (Event #1)
-            (0, slice(4, 6)), # Frame 2
-            (1, slice(1, 3)), # Frame 3 (Event #2)
-            (1, slice(3, 5)), # Frame 4
-        ]
+        # 3 Rows x 2 Columns grid for frames
+        frame_rows_gs = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=col_sub[1], hspace=0.08, wspace=0.06)
 
         for k, (ts, img) in enumerate(extracted):
-            r_idx, c_slice = frame_positions[k]
-            ax_f = fig.add_subplot(frame_rows_gs[r_idx, c_slice])
+            r_idx = k // 2
+            c_idx_sub = k % 2
+
+            ax_f = fig.add_subplot(frame_rows_gs[r_idx, c_idx_sub])
             ax_f.imshow(img)
             ax_f.set_xticks([])
             ax_f.set_yticks([])
@@ -177,32 +171,32 @@ def build_dataset_overview_figure(output_path: Path):
 
         trace_patch = FancyBboxPatch((0.0, 0.0), 1.0, 1.0, transform=ax_trace.transAxes,
                                      facecolor="#ffffff", edgecolor="#bbbbbb", linewidth=1.8,
-                                     boxstyle=BoxStyle("Round", pad=0.02))
+                                     boxstyle=BoxStyle("Round", pad=0.01))
         ax_trace.add_patch(trace_patch)
 
-        ax_trace.text(0.05, 0.90, "Generated MORSE Executable CoT Trace", transform=ax_trace.transAxes,
-                      fontsize=11.5, fontweight="bold", color=tinfo["color"], va="center")
+        ax_trace.text(0.04, 0.91, "Generated MORSE Executable CoT Trace", transform=ax_trace.transAxes,
+                      fontsize=12.0, fontweight="bold", color=tinfo["color"], va="center")
 
-        y_pos = 0.78
+        y_pos = 0.80
         for line in tinfo["cot_lines"]:
             if not line:
                 y_pos -= 0.05
                 continue
 
             if line.startswith("###"):
-                ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
-                              fontsize=10.0, fontweight="bold", color="#222222", va="center")
+                ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
+                              fontsize=10.5, fontweight="bold", color="#222222", va="center")
             elif line.startswith("Final Answer:"):
-                ax_trace.text(0.05, y_pos, "Final Answer:", transform=ax_trace.transAxes,
-                              fontsize=11.0, fontweight="bold", color="#111111", va="center")
-                ax_trace.text(0.48, y_pos, "\\boxed{2}", transform=ax_trace.transAxes,
-                              fontsize=12.0, fontweight="bold", color="white", va="center", ha="center",
+                ax_trace.text(0.04, y_pos, "Final Answer:", transform=ax_trace.transAxes,
+                              fontsize=11.5, fontweight="bold", color="#111111", va="center")
+                ax_trace.text(0.46, y_pos, "\\boxed{2}", transform=ax_trace.transAxes,
+                              fontsize=12.5, fontweight="bold", color="white", va="center", ha="center",
                               bbox=dict(boxstyle="round,pad=0.3", facecolor="#e63946", edgecolor="none"))
             else:
-                ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
-                              fontsize=9.0, color="#333333", fontfamily="monospace", va="center")
+                ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
+                              fontsize=9.5, color="#333333", fontfamily="monospace", va="center")
 
-            y_pos -= 0.085
+            y_pos -= 0.088
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white")
