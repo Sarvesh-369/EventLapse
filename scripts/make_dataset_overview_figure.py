@@ -168,8 +168,8 @@ def build_dataset_overview_figure(output_path: Path):
                                      clip_on=False)
         ax_trace.add_patch(trace_patch)
 
-        ax_trace.text(0.05, 0.91, "Executable Trace", transform=ax_trace.transAxes,
-                      fontsize=15.0, fontweight="bold", color=tinfo["color"], va="center")
+        ax_trace.text(0.05, 0.91, "Programmatically Generated Trace", transform=ax_trace.transAxes,
+                      fontsize=14.0, fontweight="bold", color=tinfo["color"], va="center")
 
         y_pos = 0.79
         for line in tinfo["cot_lines"]:
