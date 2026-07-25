@@ -36,153 +36,150 @@ def build_dataset_overview_figure(output_path: Path):
 
     tasks_info = [
         {
-            "domain": "Bounce Ball",
-            "subtitle": "Physical Motion & Wall Contact",
-            "question": "How many times did the ball contact the walls?",
-            "video_path": demo_dir / "videos/bounce_ball/bounce_N3_F1.5_seed0.mp4",
-            "gt_path": demo_dir / "gt/bounce_ball/bounce_N3_F1.5_seed0_gt.json",
+            "domain": "Bounce Ball Domain",
+            "subtitle": "Physical Motion & Wall Contact Tracking",
+            "question": "Q: \"How many times did the ball contact the walls?\"",
+            "video_path": demo_dir / "videos/bounce_ball/bounce_N2_F1.0_seed0.mp4",
+            "gt_path": demo_dir / "gt/bounce_ball/bounce_N2_F1.0_seed0_gt.json",
+            "trace_path": demo_dir / "traces/bounce_ball/bounce_N2_F1.0_seed0_trace.json",
+            "sample_ts": [5.50, 6.49, 7.00, 7.49, 8.50],
+            "event_indices": [1, 3], # 0-indexed position in sample_ts that are events
             "color": "#1f77b4",
         },
         {
-            "domain": "Blinking",
-            "subtitle": "Luminance & Opacity Pulse",
-            "question": "How many times did the object blink?",
-            "video_path": demo_dir / "videos/blinking/blinking_N3_F1.5_seed0.mp4",
-            "gt_path": demo_dir / "gt/blinking/blinking_N3_F1.5_seed0_gt.json",
-            "color": "#ff7f0e",
+            "domain": "Blinking Domain",
+            "subtitle": "Luminance & Opacity Pulse Tracking",
+            "question": "Q: \"How many times did the object blink?\"",
+            "video_path": demo_dir / "videos/blinking/blinking_N2_F1.0_seed0.mp4",
+            "gt_path": demo_dir / "gt/blinking/blinking_N2_F1.0_seed0_gt.json",
+            "trace_path": demo_dir / "traces/blinking/blinking_N2_F1.0_seed0_trace.json",
+            "sample_ts": [5.70, 6.72, 7.20, 7.72, 8.70],
+            "event_indices": [1, 3],
+            "color": "#e65100",
         },
         {
-            "domain": "State Machine",
+            "domain": "State Machine Domain",
             "subtitle": "Discrete Visual State Transitions",
-            "question": "How many state transitions occurred in the video?",
-            "video_path": demo_dir / "videos/state_machine/state_N3_F1.5_seed0.mp4",
-            "gt_path": demo_dir / "gt/state_machine/state_N3_F1.5_seed0_gt.json",
-            "color": "#2ca02c",
+            "question": "Q: \"How many state transitions occurred in the video?\"",
+            "video_path": demo_dir / "videos/state_machine/state_N2_F1.0_seed0.mp4",
+            "gt_path": demo_dir / "gt/state_machine/state_N2_F1.0_seed0_gt.json",
+            "trace_path": demo_dir / "traces/state_machine/state_N2_F1.0_seed0_trace.json",
+            "sample_ts": [5.10, 6.16, 6.65, 7.16, 8.10],
+            "event_indices": [1, 3],
+            "color": "#2e7d32",
         }
     ]
 
     plt.rcParams["font.sans-serif"] = "DejaVu Sans"
+    plt.rcParams["figure.facecolor"] = "white"
+    plt.rcParams["axes.facecolor"] = "white"
 
-    fig = plt.figure(figsize=(16, 11), dpi=300)
-    gs = gridspec.GridSpec(3, 1, figure=fig, hspace=0.38)
+    fig = plt.figure(figsize=(18, 11), dpi=300, facecolor="white")
+    
+    # 3 Main Columns
+    col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.18, left=0.03, right=0.97, top=0.92, bottom=0.03)
 
-    for i, tinfo in enumerate(tasks_info):
-        # Load GT metadata
-        with open(tinfo["gt_path"], "r") as gf:
-            gt_data = json.load(gf)
+    for c_idx, tinfo in enumerate(tasks_info):
+        # Sub-gridspec for each column (Header, Frames, Trace)
+        col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
+                                                   height_ratios=[0.9, 4.2, 2.5], hspace=0.18)
 
-        # Load trace json if exists
-        trace_json_path = demo_dir / "traces" / tinfo["video_path"].parent.name / f"{tinfo['video_path'].stem}_trace.json"
-        events = []
-        if trace_json_path.exists():
-            with open(trace_json_path, "r") as tf:
-                tr = json.load(tf)
-                events = tr.get("events", [])
+        # --- 1. Header Box (Title & Prompt) ---
+        ax_header = fig.add_subplot(col_sub[0])
+        ax_header.axis("off")
 
-        # Get event timestamps or generate 5 representative timestamps
-        if events:
-            ev_ts = [e["timestamp"] for e in events]
-            min_t = max(0.2, ev_ts[0] - 0.5)
-            max_t = ev_ts[-1] + 0.5
-            sample_ts = [min_t] + ev_ts + [max_t]
-            sample_ts = sample_ts[:5]
-        else:
-            sample_ts = [0.5, 1.5, 2.5, 3.5, 4.5]
+        header_patch = FancyBboxPatch((0.0, 0.0), 1.0, 1.0, transform=ax_header.transAxes,
+                                      facecolor="#f8f9fa", edgecolor=tinfo["color"], linewidth=2.0,
+                                      boxstyle=BoxStyle("Round", pad=0.02))
+        ax_header.add_patch(header_patch)
 
-        extracted = [(ts, extract_frame_at_timestamp(tinfo["video_path"], ts)) for ts in sample_ts]
+        ax_header.text(0.5, 0.72, tinfo["domain"], transform=ax_header.transAxes,
+                       fontsize=13, fontweight="bold", color=tinfo["color"], ha="center", va="center")
+        ax_header.text(0.5, 0.44, tinfo["subtitle"], transform=ax_header.transAxes,
+                       fontsize=8.5, fontweight="bold", color="#555555", ha="center", va="center")
+        ax_header.text(0.5, 0.18, tinfo["question"], transform=ax_header.transAxes,
+                       fontsize=8.0, fontstyle="italic", color="#222222", ha="center", va="center")
 
-        row_gs = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs[i], width_ratios=[1.8, 5.2, 3.0], wspace=0.15)
+        # --- 2. Frames Grid (5 Big Frames Centered Around Events) ---
+        # Extract frames
+        extracted = [(ts, extract_frame_at_timestamp(tinfo["video_path"], ts)) for ts in tinfo["sample_ts"]]
 
-        # --- Subpanel 1: Task Label & Question ---
-        ax_label = fig.add_subplot(row_gs[0])
-        ax_label.axis("off")
+        ax_frames_container = fig.add_subplot(col_sub[1])
+        ax_frames_container.axis("off")
 
-        rect = FancyBboxPatch((0.02, 0.05), 0.96, 0.90, transform=ax_label.transAxes,
-                              facecolor="#f8f9fa", edgecolor=tinfo["color"], linewidth=2.5,
-                              boxstyle=BoxStyle("Round", pad=0.08))
-        ax_label.add_patch(rect)
+        # Grid of 5 frames stacked vertically (or 5 frames vertically in each column)
+        frame_sub = gridspec.GridSpecFromSubplotSpec(5, 1, subplot_spec=col_sub[1], hspace=0.12)
 
-        ax_label.text(0.08, 0.72, f"{tinfo['domain']}", transform=ax_label.transAxes,
-                      fontsize=15, fontweight="bold", color=tinfo["color"], va="center")
-        ax_label.text(0.08, 0.50, f"{tinfo['subtitle']}", transform=ax_label.transAxes,
-                      fontsize=9, fontweight="bold", color="#555555", va="center")
-        ax_label.text(0.08, 0.25, f"Q: \"{tinfo['question']}\"", transform=ax_label.transAxes,
-                      fontsize=8.5, fontstyle="italic", color="#222222", va="center", wrap=True)
-
-        # --- Subpanel 2: 5 Sampled Video Keyframes ---
-        ax_frames = fig.add_subplot(row_gs[1])
-        ax_frames.axis("off")
-
-        frame_gs = gridspec.GridSpecFromSubplotSpec(1, 5, subplot_spec=row_gs[1], wspace=0.08)
+        with open(tinfo["trace_path"], "r") as tf:
+            tr_data = json.load(tf)
+            events = tr_data.get("events", [])
 
         for k, (ts, img) in enumerate(extracted):
-            ax_f = fig.add_subplot(frame_gs[k])
+            ax_f = fig.add_subplot(frame_sub[k])
             ax_f.imshow(img)
             ax_f.set_xticks([])
             ax_f.set_yticks([])
 
-            # Highlight frames corresponding to events
-            is_event_frame = False
-            event_idx = None
-            for idx, e in enumerate(events):
-                if abs(e["timestamp"] - ts) < 0.2:
-                    is_event_frame = True
-                    event_idx = idx + 1
-                    break
+            is_event = k in tinfo["event_indices"]
+            event_num = 1 if k == 1 else (2 if k == 3 else None)
 
-            border_color = "#e63946" if is_event_frame else "#cccccc"
-            border_width = 3.0 if is_event_frame else 1.0
+            border_color = "#e63946" if is_event else "#cccccc"
+            border_width = 2.5 if is_event else 1.0
 
             for spine in ax_f.spines.values():
                 spine.set_edgecolor(border_color)
                 spine.set_linewidth(border_width)
 
-            # Top label: Timestamp
-            ax_f.set_title(f"t = {ts:.2f}s", fontsize=9, fontweight="bold", pad=4, color="#333333")
+            # Left badge: timestamp
+            ax_f.text(0.03, 0.82, f"t = {ts:.2f}s", transform=ax_f.transAxes,
+                      fontsize=8, fontweight="bold", color="white",
+                      bbox=dict(boxstyle="round,pad=0.2", facecolor="#111111", edgecolor="none", alpha=0.75))
 
-            # Bottom badge if event frame
-            if is_event_frame:
-                ax_f.text(0.5, 0.12, f"Event #{event_idx}", transform=ax_f.transAxes,
-                          fontsize=8, fontweight="bold", color="white", ha="center",
-                          bbox=dict(boxstyle="round,pad=0.25", facecolor="#e63946", edgecolor="none", alpha=0.95))
+            # Right badge: Event indicator
+            if is_event:
+                ax_f.text(0.97, 0.82, f"★ Event #{event_num}", transform=ax_f.transAxes,
+                          fontsize=8, fontweight="bold", color="white", ha="right",
+                          bbox=dict(boxstyle="round,pad=0.2", facecolor="#e63946", edgecolor="none", alpha=0.95))
 
-        # --- Subpanel 3: MORSE Executable Trace / Ledger ---
-        ax_trace = fig.add_subplot(row_gs[2])
+        # --- 3. Actual Generated Trace Example ---
+        ax_trace = fig.add_subplot(col_sub[2])
         ax_trace.axis("off")
 
-        trace_rect = FancyBboxPatch((0.02, 0.05), 0.96, 0.90, transform=ax_trace.transAxes,
-                                    facecolor="#1e1e1e", edgecolor="#444444", linewidth=1.5,
-                                    boxstyle=BoxStyle("Round", pad=0.06))
-        ax_trace.add_patch(trace_rect)
+        trace_patch = FancyBboxPatch((0.0, 0.0), 1.0, 1.0, transform=ax_trace.transAxes,
+                                     facecolor="#ffffff", edgecolor="#cccccc", linewidth=1.5,
+                                     boxstyle=BoxStyle("Round", pad=0.02))
+        ax_trace.add_patch(trace_patch)
 
-        ax_trace.text(0.08, 0.82, "MORSE Executable Trace Ledger", transform=ax_trace.transAxes,
-                      fontsize=10, fontweight="bold", color="#4cc9f0", va="center")
+        ax_trace.text(0.05, 0.88, "Ground-Truth MORSE Executable Trace", transform=ax_trace.transAxes,
+                      fontsize=9.5, fontweight="bold", color="#111111", va="center")
 
-        y_pos = 0.65
+        y_pos = 0.72
         for idx, e in enumerate(events):
             if "wall_identity" in e:
-                detail = f"Contact '{e['wall_identity']}'"
+                detail = f"Ball contacted '{e['wall_identity']}'"
             elif "blink_index" in e:
-                detail = f"Blink pulse ON"
+                detail = f"Object blinked ON (pulse)"
             elif "from_state" in e:
-                detail = f"Transition {e['from_state']}➔{e['to_state']}"
+                detail = f"Transitioned State {e['from_state']} ➔ State {e['to_state']}"
             else:
                 detail = "Event detected"
 
-            line_str = f"• [{e['timestamp']:.2f}s] {detail} (c={e['running_count']})"
-            ax_trace.text(0.08, y_pos, line_str, transform=ax_trace.transAxes,
-                          fontsize=8, color="#f8f9fa", fontfamily="monospace", va="center")
-            y_pos -= 0.15
+            line_str = f"• [{e['timestamp']:.2f}s] {detail}  (count={e['running_count']})"
+            ax_trace.text(0.05, y_pos, line_str, transform=ax_trace.transAxes,
+                          fontsize=7.8, color="#333333", fontfamily="monospace", va="center")
+            y_pos -= 0.18
 
-        ax_trace.text(0.08, y_pos, f"Final Answer: {gt_data['exact_answer']}", transform=ax_trace.transAxes,
-                      fontsize=10, fontweight="bold", color="#ffffff", fontfamily="monospace", va="center",
-                      bbox=dict(boxstyle="round,pad=0.25", facecolor="#e63946", edgecolor="none", alpha=0.9))
+        ax_trace.text(0.05, 0.22, "Final Answer:", transform=ax_trace.transAxes,
+                      fontsize=9, fontweight="bold", color="#111111", va="center")
+        ax_trace.text(0.42, 0.22, "\\boxed{2}", transform=ax_trace.transAxes,
+                      fontsize=10, fontweight="bold", color="white", va="center", ha="center",
+                      bbox=dict(boxstyle="round,pad=0.25", facecolor="#e63946", edgecolor="none"))
 
-    fig.suptitle("EventLapse Benchmark: Synthetic Task Domains & MORSE Ground-Truth Traces",
-                 fontsize=16, fontweight="bold", y=0.98, color="#111111")
+    fig.suptitle("EventLapse Benchmark Dataset: N=2 Event Count Samples (F=1.0 Hz)",
+                 fontsize=15, fontweight="bold", y=0.97, color="#111111")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(output_path, dpi=300, bbox_inches="tight")
+    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white")
     plt.close()
     print(f"Saved dataset overview figure to {output_path}")
 
