@@ -10,13 +10,11 @@ from eventlapse.models.base import BaseVideoModel, ModelConfig, ModelResponse
 class VLLMAdapter(BaseVideoModel):
     """
     Adapter for models hosted using vLLM's OpenAI-compatible API endpoint (e.g. vLLM vLM server).
-    Supports open-source VLMs like Qwen2-VL, LLaVA-NeXT-Video, InternVL2, etc.
+    Supports open-source VLMs like Qwen2-VL, Qwen2.5-VL, Qwen3-VL, LLaVA-NeXT-Video, InternVL2, etc.
     """
     def __init__(self, config: ModelConfig):
         super().__init__(config)
         self.base_url = os.environ.get("VLLM_BASE_URL", "http://localhost:8000/v1").rstrip("/")
-        # vLLM local server does not require API authentication.
-        # If you deploy behind a proxy with auth, set VLLM_API_KEY in your environment.
         self.api_key = os.environ.get("VLLM_API_KEY", None)
 
     @property
@@ -44,6 +42,7 @@ class VLLMAdapter(BaseVideoModel):
     ) -> ModelResponse:
         """
         Sends native video or base64 video payload to vLLM OpenAI-compatible endpoint.
+        Passes media_io_kwargs and mm_processor_kwargs for native video FPS sampling.
         """
         start_t = time.time()
         endpoint = f"{self.base_url}/chat/completions"
@@ -52,7 +51,6 @@ class VLLMAdapter(BaseVideoModel):
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        # Encode video into base64 data url if needed
         try:
             with open(video_path, "rb") as vf:
                 b64_video = base64.b64encode(vf.read()).decode("utf-8")
@@ -70,7 +68,14 @@ class VLLMAdapter(BaseVideoModel):
                 "max_tokens": self.config.max_output_tokens
             }
 
-            resp = requests.post(endpoint, headers=headers, json=payload, timeout=120)
+            # Check if custom native video FPS sampling is requested via media_io_kwargs / mm_processor_kwargs
+            fps = kwargs.get("fps", None)
+            if fps:
+                fps_val = float(fps)
+                payload["media_io_kwargs"] = {"video": {"fps": fps_val}}
+                payload["mm_processor_kwargs"] = {"fps": fps_val}
+
+            resp = requests.post(endpoint, headers=headers, json=payload, timeout=180)
             latency = round(time.time() - start_t, 2)
 
             if resp.status_code == 200:
