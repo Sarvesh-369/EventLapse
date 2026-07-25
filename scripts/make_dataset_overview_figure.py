@@ -39,16 +39,15 @@ def build_dataset_overview_figure(output_path: Path):
             "domain": "Bounce Ball",
             "question": "Question: How many times did the ball contact the walls?",
             "video_path": demo_dir / "videos/bounce_ball/bounce_N2_F1.0_seed0.mp4",
-            "sample_ts": [5.50, 6.49, 7.00, 7.49, 8.00, 8.50],
-            "event_indices": [1, 3],
+            "sample_ts": [5.50, 6.00, 6.49, 6.80, 7.10, 7.40],
+            "event_indices": [2],
             "color": "#1f77b4",
             "cot_lines": [
                 "Scene Description:",
                 "Ball bouncing between walls at 1.0 Hz.",
                 "• t = 6.49s: wall_contact (wall_negative) ➔ c=1",
-                "• t = 7.49s: wall_contact (wall_positive) ➔ c=2",
-                "Total Events: 2",
-                "Final Answer: 2"
+                "Total Events: 1",
+                "Final Answer: 1"
             ]
         },
         {
@@ -70,17 +69,18 @@ def build_dataset_overview_figure(output_path: Path):
         {
             "domain": "State Machine",
             "question": "Question: How many state transitions occurred in the video?",
-            "video_path": demo_dir / "videos/state_machine/state_N2_F1.0_seed1.mp4",
-            "sample_ts": [2.50, 3.09, 3.60, 4.09, 4.60, 5.10],
-            "event_indices": [1, 3],
+            "video_path": demo_dir / "videos/state_machine/state_N3_F1.5_seed0.mp4",
+            "sample_ts": [5.20, 5.65, 6.32, 6.60, 6.99, 7.30],
+            "event_indices": [1, 2, 4],
             "color": "#2ca02c",
             "cot_lines": [
                 "Scene Description:",
-                "Visual state transitions at 1.0 Hz.",
-                "• t = 3.09s: transition (State D ➔ State C) ➔ c=1",
-                "• t = 4.09s: transition (State C ➔ State A) ➔ c=2",
-                "Total Events: 2",
-                "Final Answer: 2"
+                "Visual state transitions at 1.5 Hz.",
+                "• t = 5.65s: transition (State D ➔ State A) ➔ c=1",
+                "• t = 6.32s: transition (State A ➔ State D) ➔ c=2",
+                "• t = 6.99s: transition (State D ➔ State B) ➔ c=3",
+                "Total Events: 3",
+                "Final Answer: 3"
             ]
         }
     ]
@@ -89,13 +89,13 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    # Compact figure size (18, 8.3) with proportional trace panel height (2.35)
-    fig = plt.figure(figsize=(18, 8.3), dpi=300, facecolor="white")
+    # Figure height accommodating up to 7 trace lines (State Machine)
+    fig = plt.figure(figsize=(18, 8.8), dpi=300, facecolor="white")
     col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.03, left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     for c_idx, tinfo in enumerate(tasks_info):
         col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
-                                                   height_ratios=[0.85, 5.2, 2.35], hspace=0.035)
+                                                   height_ratios=[0.85, 5.2, 2.75], hspace=0.035)
 
         # --- 1. Header Box ---
         ax_header = fig.add_subplot(col_sub[0])
@@ -120,6 +120,7 @@ def build_dataset_overview_figure(output_path: Path):
 
         frame_rows_gs = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=col_sub[1], hspace=0.01, wspace=0.01)
 
+        event_counter = 1
         for k, (ts, img) in enumerate(extracted):
             r_idx = k // 2
             c_idx_sub = k % 2
@@ -130,7 +131,9 @@ def build_dataset_overview_figure(output_path: Path):
             ax_f.set_yticks([])
 
             is_event = k in tinfo["event_indices"]
-            event_num = 1 if k == 1 else (2 if k == 3 else None)
+            event_num = event_counter if is_event else None
+            if is_event:
+                event_counter += 1
 
             border_color = "#e63946" if is_event else "#444444"
             border_width = 3.5 if is_event else 1.2
@@ -160,10 +163,11 @@ def build_dataset_overview_figure(output_path: Path):
                                      clip_on=False)
         ax_trace.add_patch(trace_patch)
 
-        ax_trace.text(0.04, 0.88, "Executable Ground-Truth Trace", transform=ax_trace.transAxes,
+        ax_trace.text(0.04, 0.90, "Executable Ground-Truth Trace", transform=ax_trace.transAxes,
                       fontsize=16.5, fontweight="bold", color=tinfo["color"], va="center")
 
-        y_pos = 0.72
+        y_pos = 0.76
+        line_step = 0.118 if len(tinfo["cot_lines"]) > 6 else 0.125
         for line in tinfo["cot_lines"]:
             if line.endswith(":"):
                 ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
@@ -176,9 +180,9 @@ def build_dataset_overview_figure(output_path: Path):
                               fontsize=13.5, fontweight="bold", color="#333333", fontfamily="monospace", va="center")
             else:
                 ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
-                              fontsize=13.0, color="#222222", fontfamily="monospace", va="center")
+                              fontsize=12.5, color="#222222", fontfamily="monospace", va="center")
 
-            y_pos -= 0.135
+            y_pos -= line_step
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.01)
