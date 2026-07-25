@@ -45,12 +45,9 @@ def build_dataset_overview_figure(output_path: Path):
             "cot_lines": [
                 "Scene Description:",
                 "Ball bouncing between walls at 1.0 Hz.",
-                "• At 6.49s: Contact wall_negative (c=1)",
-                "• At 7.49s: Contact wall_positive (c=2)",
-                "",
-                "Step 1: Track Contact Events",
-                "Total wall contact events detected: 2.",
-                "",
+                "• t = 6.49s: wall_contact (wall_negative) ➔ c=1",
+                "• t = 7.49s: wall_contact (wall_positive) ➔ c=2",
+                "Total Events: 2",
                 "Final Answer: 2"
             ]
         },
@@ -64,12 +61,9 @@ def build_dataset_overview_figure(output_path: Path):
             "cot_lines": [
                 "Scene Description:",
                 "An object pulsing ON and OFF at 1.0 Hz.",
-                "• At 6.72s: Object blinked ON (c=1)",
-                "• At 7.72s: Object blinked ON (c=2)",
-                "",
-                "Step 1: Track Blink Pulses",
-                "Total blinks detected: 2.",
-                "",
+                "• t = 6.72s: blink_pulse (state: ON) ➔ c=1",
+                "• t = 7.72s: blink_pulse (state: ON) ➔ c=2",
+                "Total Events: 2",
                 "Final Answer: 2"
             ]
         },
@@ -83,12 +77,9 @@ def build_dataset_overview_figure(output_path: Path):
             "cot_lines": [
                 "Scene Description:",
                 "Visual state transitions at 1.0 Hz.",
-                "• At 3.09s: Transition State D ➔ State C (c=1)",
-                "• At 4.09s: Transition State C ➔ State A (c=2)",
-                "",
-                "Step 1: Track State Transitions",
-                "Total state transitions detected: 2.",
-                "",
+                "• t = 3.09s: transition (State D ➔ State C) ➔ c=1",
+                "• t = 4.09s: transition (State C ➔ State A) ➔ c=2",
+                "Total Events: 2",
                 "Final Answer: 2"
             ]
         }
@@ -98,13 +89,13 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    # Tuned figure height (9.2) and trace panel ratio (3.05) to eliminate empty bottom space
-    fig = plt.figure(figsize=(18, 9.2), dpi=300, facecolor="white")
+    # Compact figure size (18, 8.3) with proportional trace panel height (2.35)
+    fig = plt.figure(figsize=(18, 8.3), dpi=300, facecolor="white")
     col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.03, left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     for c_idx, tinfo in enumerate(tasks_info):
         col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
-                                                   height_ratios=[0.85, 5.2, 3.05], hspace=0.035)
+                                                   height_ratios=[0.85, 5.2, 2.35], hspace=0.035)
 
         # --- 1. Header Box ---
         ax_header = fig.add_subplot(col_sub[0])
@@ -159,7 +150,7 @@ def build_dataset_overview_figure(output_path: Path):
                           fontsize=12.0, fontweight="bold", color="white", ha="right",
                           bbox=dict(boxstyle="round,pad=0.25", facecolor="#e63946", edgecolor="none", alpha=0.95))
 
-        # --- 3. Trace Box (Trimmed height to fit content perfectly) ---
+        # --- 3. Trace Box: Executable Ground-Truth Trace ---
         ax_trace = fig.add_subplot(col_sub[2])
         ax_trace.axis("off")
 
@@ -169,26 +160,25 @@ def build_dataset_overview_figure(output_path: Path):
                                      clip_on=False)
         ax_trace.add_patch(trace_patch)
 
-        ax_trace.text(0.04, 0.89, "Programmatically Generated Trace", transform=ax_trace.transAxes,
+        ax_trace.text(0.04, 0.88, "Executable Ground-Truth Trace", transform=ax_trace.transAxes,
                       fontsize=16.5, fontweight="bold", color=tinfo["color"], va="center")
 
-        y_pos = 0.76
+        y_pos = 0.72
         for line in tinfo["cot_lines"]:
-            if not line:
-                y_pos -= 0.025
-                continue
-
             if line.endswith(":"):
                 ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
                               fontsize=15.0, fontweight="bold", color="#111111", va="center")
             elif line.startswith("Final Answer:"):
                 ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
                               fontsize=15.5, fontweight="bold", color="#111111", va="center")
+            elif line.startswith("Total Events:"):
+                ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
+                              fontsize=13.5, fontweight="bold", color="#333333", fontfamily="monospace", va="center")
             else:
                 ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
-                              fontsize=13.5, color="#222222", fontfamily="monospace", va="center")
+                              fontsize=13.0, color="#222222", fontfamily="monospace", va="center")
 
-            y_pos -= 0.092
+            y_pos -= 0.135
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.01)
