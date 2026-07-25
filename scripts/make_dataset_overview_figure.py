@@ -98,27 +98,27 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    fig = plt.figure(figsize=(18, 9.8), dpi=300, facecolor="white")
+    fig = plt.figure(figsize=(18, 10.5), dpi=300, facecolor="white")
     col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.03, left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     for c_idx, tinfo in enumerate(tasks_info):
         col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
-                                                   height_ratios=[0.75, 5.4, 3.6], hspace=0.015)
+                                                   height_ratios=[0.85, 5.2, 4.2], hspace=0.015)
 
-        # --- 1. Header Box ---
+        # --- 1. Header Box (Larger Font Sizes) ---
         ax_header = fig.add_subplot(col_sub[0])
         ax_header.axis("off")
 
         header_patch = FancyBboxPatch((0.005, 0.02), 0.99, 0.96, transform=ax_header.transAxes,
-                                      facecolor="#ffffff", edgecolor=tinfo["color"], linewidth=2.2,
+                                      facecolor="#ffffff", edgecolor=tinfo["color"], linewidth=2.5,
                                       boxstyle=BoxStyle("Round", pad=0.01, rounding_size=0.04),
                                       clip_on=False)
         ax_header.add_patch(header_patch)
 
         ax_header.text(0.5, 0.68, tinfo["domain"], transform=ax_header.transAxes,
-                       fontsize=17, fontweight="bold", color=tinfo["color"], ha="center", va="center")
-        ax_header.text(0.5, 0.28, tinfo["question"], transform=ax_header.transAxes,
-                       fontsize=11.5, fontstyle="italic", color="#111111", ha="center", va="center")
+                       fontsize=20.0, fontweight="bold", color=tinfo["color"], ha="center", va="center")
+        ax_header.text(0.5, 0.26, tinfo["question"], transform=ax_header.transAxes,
+                       fontsize=13.5, fontstyle="italic", color="#111111", ha="center", va="center")
 
         # --- 2. 6 Frames in Original 16:9 Aspect Ratio ---
         extracted = [(ts, extract_frame_at_timestamp(tinfo["video_path"], ts)) for ts in tinfo["sample_ts"]]
@@ -149,43 +149,43 @@ def build_dataset_overview_figure(output_path: Path):
 
             # Top timestamp badge
             ax_f.text(0.04, 0.82, f"t = {ts:.2f}s", transform=ax_f.transAxes,
-                      fontsize=11.5, fontweight="bold", color="white",
+                      fontsize=12.0, fontweight="bold", color="white",
                       bbox=dict(boxstyle="round,pad=0.25", facecolor="#111111", edgecolor="none", alpha=0.88))
 
             # Event badge
             if is_event:
                 ax_f.text(0.96, 0.82, f"★ Event #{event_num}", transform=ax_f.transAxes,
-                          fontsize=11.5, fontweight="bold", color="white", ha="right",
+                          fontsize=12.0, fontweight="bold", color="white", ha="right",
                           bbox=dict(boxstyle="round,pad=0.25", facecolor="#e63946", edgecolor="none", alpha=0.95))
 
-        # --- 3. Trace Box ---
+        # --- 3. Trace Box (Larger Font Sizes) ---
         ax_trace = fig.add_subplot(col_sub[2])
         ax_trace.axis("off")
 
         trace_patch = FancyBboxPatch((0.005, 0.01), 0.99, 0.98, transform=ax_trace.transAxes,
-                                     facecolor="#ffffff", edgecolor="#333333", linewidth=2.2,
+                                     facecolor="#ffffff", edgecolor="#333333", linewidth=2.5,
                                      boxstyle=BoxStyle("Round", pad=0.01, rounding_size=0.04),
                                      clip_on=False)
         ax_trace.add_patch(trace_patch)
 
-        ax_trace.text(0.05, 0.91, "Programmatically Generated Trace", transform=ax_trace.transAxes,
-                      fontsize=14.0, fontweight="bold", color=tinfo["color"], va="center")
+        ax_trace.text(0.04, 0.92, "Programmatically Generated Trace", transform=ax_trace.transAxes,
+                      fontsize=16.5, fontweight="bold", color=tinfo["color"], va="center")
 
-        y_pos = 0.79
+        y_pos = 0.80
         for line in tinfo["cot_lines"]:
             if not line:
-                y_pos -= 0.03
+                y_pos -= 0.025
                 continue
 
             if line.endswith(":"):
-                ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
-                              fontsize=13.0, fontweight="bold", color="#111111", va="center")
+                ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
+                              fontsize=15.0, fontweight="bold", color="#111111", va="center")
             elif line.startswith("Final Answer:"):
-                ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
-                              fontsize=13.5, fontweight="bold", color="#111111", va="center")
+                ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
+                              fontsize=15.5, fontweight="bold", color="#111111", va="center")
             else:
-                ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
-                              fontsize=11.8, color="#222222", fontfamily="monospace", va="center")
+                ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
+                              fontsize=13.5, color="#222222", fontfamily="monospace", va="center")
 
             y_pos -= 0.088
 
