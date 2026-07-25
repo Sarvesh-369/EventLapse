@@ -98,7 +98,6 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    # Widescreen figure layout tuned with padding so all 4 box edges remain fully visible
     fig = plt.figure(figsize=(18, 10.8), dpi=300, facecolor="white")
     col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.10, left=0.02, right=0.98, top=0.98, bottom=0.02)
 
@@ -106,13 +105,13 @@ def build_dataset_overview_figure(output_path: Path):
         col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
                                                    height_ratios=[0.8, 5.0, 4.0], hspace=0.10)
 
-        # --- 1. Header Box with All 4 Edges Outline ---
+        # --- 1. Header Box with Matching Rounded Rectangle Corners ---
         ax_header = fig.add_subplot(col_sub[0])
         ax_header.axis("off")
 
         header_patch = FancyBboxPatch((0.02, 0.05), 0.96, 0.90, transform=ax_header.transAxes,
-                                      facecolor="#ffffff", edgecolor=tinfo["color"], linewidth=2.5,
-                                      boxstyle=BoxStyle("Round", pad=0.01, rounding_size=0.12),
+                                      facecolor="#ffffff", edgecolor=tinfo["color"], linewidth=2.2,
+                                      boxstyle=BoxStyle("Round", pad=0.01, rounding_size=0.04),
                                       clip_on=False)
         ax_header.add_patch(header_patch)
 
@@ -159,13 +158,13 @@ def build_dataset_overview_figure(output_path: Path):
                           fontsize=11.5, fontweight="bold", color="white", ha="right",
                           bbox=dict(boxstyle="round,pad=0.25", facecolor="#e63946", edgecolor="none", alpha=0.95))
 
-        # --- 3. Trace Box with All 4 Edges Outline ---
+        # --- 3. Trace Box with Matching Rounded Rectangle Corners ---
         ax_trace = fig.add_subplot(col_sub[2])
         ax_trace.axis("off")
 
         trace_patch = FancyBboxPatch((0.02, 0.03), 0.96, 0.94, transform=ax_trace.transAxes,
                                      facecolor="#ffffff", edgecolor="#333333", linewidth=2.2,
-                                     boxstyle=BoxStyle("Round", pad=0.01, rounding_size=0.12),
+                                     boxstyle=BoxStyle("Round", pad=0.01, rounding_size=0.04),
                                      clip_on=False)
         ax_trace.add_patch(trace_patch)
 
