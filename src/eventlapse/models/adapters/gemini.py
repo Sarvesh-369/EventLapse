@@ -97,7 +97,6 @@ class GeminiAdapter(BaseVideoModel):
 
         if thinking_mode or "thinking" in self.config.model_name.lower():
             try:
-                # Add thinking_config for models supporting reasoning / thinking
                 kwargs["thinking_config"] = self.types.ThinkingConfig(include_thoughts=True)
             except Exception:
                 pass
@@ -137,7 +136,21 @@ class GeminiAdapter(BaseVideoModel):
                     response_schema=response_schema
                 )
 
-                contents = [video_file, prompt]
+                # Check if custom native video FPS sampling is specified
+                fps = kwargs.get("fps", None)
+                if fps and self.types:
+                    try:
+                        video_part = self.types.Part.from_uri(
+                            file_uri=video_file.uri,
+                            mime_type="video/mp4",
+                            video_metadata=self.types.VideoMetadata(fps=float(fps))
+                        )
+                        contents = [video_part, prompt]
+                    except Exception as ex:
+                        logger.warning(f"VideoMetadata fps parameter failed ({ex}), falling back to default video part.")
+                        contents = [video_file, prompt]
+                else:
+                    contents = [video_file, prompt]
 
                 response = self.client.models.generate_content(
                     model=self.config.model_name,
@@ -148,43 +161,34 @@ class GeminiAdapter(BaseVideoModel):
                 latency = round(time.time() - start_time, 3)
                 raw_text = response.text or ""
 
-                parsed_json = None
-                if response_schema or raw_text.strip().startswith("{"):
-                    try:
-                        parsed_json = json.loads(raw_text)
-                    except Exception:
-                        pass
-
-                usage_dict = {}
-                if hasattr(response, "usage_metadata") and response.usage_metadata:
-                    usage_dict = {
-                        "prompt_tokens": getattr(response.usage_metadata, "prompt_token_count", 0),
-                        "candidate_tokens": getattr(response.usage_metadata, "candidates_token_count", 0),
-                        "total_tokens": getattr(response.usage_metadata, "total_token_count", 0)
-                    }
+                usage_meta = getattr(response, "usage_metadata", None)
+                prompt_tokens = getattr(usage_meta, "prompt_token_count", 0) if usage_meta else 0
+                candidates_tokens = getattr(usage_meta, "candidates_token_count", 0) if usage_meta else 0
+                total_tokens = getattr(usage_meta, "total_token_count", 0) if usage_meta else 0
 
                 return ModelResponse(
                     raw_response_text=raw_text,
-                    parsed_json=parsed_json,
-                    token_usage=usage_dict,
+                    parsed_json=self._try_parse_json(raw_text),
+                    token_usage={
+                        "prompt_tokens": prompt_tokens,
+                        "candidate_tokens": candidates_tokens,
+                        "total_tokens": total_tokens
+                    },
                     latency_sec=latency,
-                    model_version=self.config.model_name,
-                    finish_reason="STOP",
-                    retry_count=attempt
+                    model_version=self.config.model_name
                 )
-
             except Exception as e:
-                logger.warning(f"Gemini request failed (attempt {attempt+1}/{max_retries}): {e}")
+                logger.warning(f"Gemini API attempt {attempt+1}/{max_retries} failed: {e}")
                 if attempt == max_retries - 1:
                     return ModelResponse(
                         raw_response_text="",
                         latency_sec=round(time.time() - start_time, 3),
-                        retry_count=attempt,
                         error=str(e)
                     )
-                time.sleep(backoff ** (attempt + 1))
+                time.sleep(backoff)
+                backoff *= 2.0
 
-        return ModelResponse(raw_response_text="", error="Max retries reached")
+        return ModelResponse(raw_response_text="", error="Gemini query failed after max retries")
 
     def query_frames(
         self,
@@ -196,14 +200,22 @@ class GeminiAdapter(BaseVideoModel):
         **kwargs
     ) -> ModelResponse:
         if not self.client:
-            return ModelResponse(raw_response_text="", error="Gemini API client unavailable.")
-
-        from PIL import Image
-        images = [Image.open(p) for p in frame_paths if p.exists()]
-        contents = images + [prompt]
+            return ModelResponse(
+                raw_response_text="",
+                error="Gemini API client unavailable. Set GEMINI_API_KEY environment variable."
+            )
 
         start_time = time.time()
         try:
+            from PIL import Image
+            contents = [prompt]
+            for fp in frame_paths:
+                try:
+                    img = Image.open(fp)
+                    contents.append(img)
+                except Exception as ie:
+                    logger.warning(f"Failed to load frame image {fp}: {ie}")
+
             gen_config = self._build_gen_config(
                 system_instruction=system_instruction,
                 thinking_mode=thinking_mode,
@@ -218,28 +230,38 @@ class GeminiAdapter(BaseVideoModel):
 
             latency = round(time.time() - start_time, 3)
             raw_text = response.text or ""
-            parsed_json = None
-            if raw_text.strip().startswith("{"):
-                try:
-                    parsed_json = json.loads(raw_text)
-                except Exception:
-                    pass
 
-            usage_dict = {}
-            if hasattr(response, "usage_metadata") and response.usage_metadata:
-                usage_dict = {
-                    "prompt_tokens": getattr(response.usage_metadata, "prompt_token_count", 0),
-                    "candidate_tokens": getattr(response.usage_metadata, "candidates_token_count", 0),
-                    "total_tokens": getattr(response.usage_metadata, "total_token_count", 0)
-                }
+            usage_meta = getattr(response, "usage_metadata", None)
+            prompt_tokens = getattr(usage_meta, "prompt_token_count", 0) if usage_meta else 0
+            candidates_tokens = getattr(usage_meta, "candidates_token_count", 0) if usage_meta else 0
+            total_tokens = getattr(usage_meta, "total_token_count", 0) if usage_meta else 0
 
             return ModelResponse(
                 raw_response_text=raw_text,
-                parsed_json=parsed_json,
-                token_usage=usage_dict,
+                parsed_json=self._try_parse_json(raw_text),
+                token_usage={
+                    "prompt_tokens": prompt_tokens,
+                    "candidate_tokens": candidates_tokens,
+                    "total_tokens": total_tokens
+                },
                 latency_sec=latency,
-                model_version=self.config.model_name,
-                finish_reason="STOP"
+                model_version=self.config.model_name
             )
         except Exception as e:
-            return ModelResponse(raw_response_text="", latency_sec=round(time.time() - start_time, 3), error=str(e))
+            return ModelResponse(
+                raw_response_text="",
+                latency_sec=round(time.time() - start_time, 3),
+                error=f"Gemini query_frames error: {str(e)}"
+            )
+
+    def _try_parse_json(self, text: str) -> Optional[Dict[str, Any]]:
+        try:
+            if "```json" in text:
+                json_str = text.split("```json")[1].split("```")[0].strip()
+                return json.loads(json_str)
+            elif "```" in text:
+                json_str = text.split("```")[1].split("```")[0].strip()
+                return json.loads(json_str)
+            return json.loads(text.strip())
+        except Exception:
+            return None
