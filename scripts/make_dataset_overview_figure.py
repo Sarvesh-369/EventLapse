@@ -98,42 +98,43 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    # Widescreen 18x11.5 layout focusing heavily on frame size & trace legibility with ZERO wasted space
+    # Widescreen 18x12 figure layout matching exact 16:9 frame aspect ratios for ZERO frame whitespace
     fig = plt.figure(figsize=(18, 11.5), dpi=300, facecolor="white")
-    col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.06, left=0.005, right=0.995, top=0.995, bottom=0.005)
+    col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.08, left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     for c_idx, tinfo in enumerate(tasks_info):
         col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
-                                                   height_ratios=[0.35, 6.2, 3.8], hspace=0.01)
+                                                   height_ratios=[0.8, 5.6, 3.6], hspace=0.08)
 
-        # --- 1. Header Box (Clean Title & Question Only) ---
+        # --- 1. Header Box in Rounded Rectangle ---
         ax_header = fig.add_subplot(col_sub[0])
         ax_header.axis("off")
 
-        header_patch = FancyBboxPatch((0.0, 0.0), 1.0, 1.0, transform=ax_header.transAxes,
+        header_patch = FancyBboxPatch((0.01, 0.02), 0.98, 0.96, transform=ax_header.transAxes,
                                       facecolor="#f8f9fa", edgecolor=tinfo["color"], linewidth=2.5,
-                                      boxstyle=BoxStyle("Round", pad=0.005))
+                                      boxstyle=BoxStyle("Round", pad=0.02, rounding_size=0.15))
         ax_header.add_patch(header_patch)
 
-        ax_header.text(0.5, 0.65, tinfo["domain"], transform=ax_header.transAxes,
+        ax_header.text(0.5, 0.68, tinfo["domain"], transform=ax_header.transAxes,
                        fontsize=18, fontweight="bold", color=tinfo["color"], ha="center", va="center")
-        ax_header.text(0.5, 0.22, tinfo["question"], transform=ax_header.transAxes,
-                       fontsize=12, fontstyle="italic", color="#111111", ha="center", va="center")
+        ax_header.text(0.5, 0.28, tinfo["question"], transform=ax_header.transAxes,
+                       fontsize=11.5, fontstyle="italic", color="#111111", ha="center", va="center")
 
-        # --- 2. 6 Frames arranged in 3 Rows of 2 Frames Each (Zero gaps!) ---
+        # --- 2. 6 Frames arranged in 3 Rows x 2 Cols (Zero frame aspect gap!) ---
         extracted = [(ts, extract_frame_at_timestamp(tinfo["video_path"], ts)) for ts in tinfo["sample_ts"]]
 
         ax_frames_container = fig.add_subplot(col_sub[1])
         ax_frames_container.axis("off")
 
-        frame_rows_gs = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=col_sub[1], hspace=0.0, wspace=0.02)
+        # Tight hspace (0.01) and wspace (0.02)
+        frame_rows_gs = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=col_sub[1], hspace=0.01, wspace=0.02)
 
         for k, (ts, img) in enumerate(extracted):
             r_idx = k // 2
             c_idx_sub = k % 2
 
             ax_f = fig.add_subplot(frame_rows_gs[r_idx, c_idx_sub])
-            ax_f.imshow(img)
+            ax_f.imshow(img, aspect="auto") # aspect='auto' eliminates ALL whitespace inside subplot!
             ax_f.set_xticks([])
             ax_f.set_yticks([])
 
@@ -147,47 +148,47 @@ def build_dataset_overview_figure(output_path: Path):
                 spine.set_edgecolor(border_color)
                 spine.set_linewidth(border_width)
 
-            # Top timestamp badge (Larger text!)
-            ax_f.text(0.04, 0.80, f"t = {ts:.2f}s", transform=ax_f.transAxes,
-                      fontsize=12.5, fontweight="bold", color="white",
+            # Top timestamp badge
+            ax_f.text(0.04, 0.82, f"t = {ts:.2f}s", transform=ax_f.transAxes,
+                      fontsize=12.0, fontweight="bold", color="white",
                       bbox=dict(boxstyle="round,pad=0.25", facecolor="#111111", edgecolor="none", alpha=0.88))
 
-            # Event badge (Larger text!)
+            # Event badge
             if is_event:
-                ax_f.text(0.96, 0.80, f"★ Event #{event_num}", transform=ax_f.transAxes,
-                          fontsize=12.5, fontweight="bold", color="white", ha="right",
+                ax_f.text(0.96, 0.82, f"★ Event #{event_num}", transform=ax_f.transAxes,
+                          fontsize=12.0, fontweight="bold", color="white", ha="right",
                           bbox=dict(boxstyle="round,pad=0.25", facecolor="#e63946", edgecolor="none", alpha=0.95))
 
-        # --- 3. Cleaned Executable Trace Box (Much larger font sizes, no MORSE, no ###) ---
+        # --- 3. Trace Box wrapped in Rounded Rectangle ---
         ax_trace = fig.add_subplot(col_sub[2])
         ax_trace.axis("off")
 
-        trace_patch = FancyBboxPatch((0.0, 0.0), 1.0, 1.0, transform=ax_trace.transAxes,
-                                     facecolor="#ffffff", edgecolor="#bbbbbb", linewidth=1.8,
-                                     boxstyle=BoxStyle("Round", pad=0.005))
+        trace_patch = FancyBboxPatch((0.01, 0.01), 0.98, 0.98, transform=ax_trace.transAxes,
+                                     facecolor="#fafafa", edgecolor="#cccccc", linewidth=2.0,
+                                     boxstyle=BoxStyle("Round", pad=0.02, rounding_size=0.15))
         ax_trace.add_patch(trace_patch)
 
-        ax_trace.text(0.04, 0.92, "Executable Trace", transform=ax_trace.transAxes,
-                      fontsize=16.0, fontweight="bold", color=tinfo["color"], va="center")
+        ax_trace.text(0.05, 0.91, "Executable Trace", transform=ax_trace.transAxes,
+                      fontsize=15.0, fontweight="bold", color=tinfo["color"], va="center")
 
-        y_pos = 0.80
+        y_pos = 0.79
         for line in tinfo["cot_lines"]:
             if not line:
                 y_pos -= 0.03
                 continue
 
             if line.endswith(":"):
-                ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
-                              fontsize=13.5, fontweight="bold", color="#111111", va="center")
+                ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
+                              fontsize=13.0, fontweight="bold", color="#111111", va="center")
             elif line.startswith("Final Answer:"):
-                ax_trace.text(0.04, y_pos, "Final Answer:", transform=ax_trace.transAxes,
-                              fontsize=14.5, fontweight="bold", color="#111111", va="center")
+                ax_trace.text(0.05, y_pos, "Final Answer:", transform=ax_trace.transAxes,
+                              fontsize=14.0, fontweight="bold", color="#111111", va="center")
                 ax_trace.text(0.48, y_pos, "\\boxed{2}", transform=ax_trace.transAxes,
-                              fontsize=15.5, fontweight="bold", color="white", va="center", ha="center",
+                              fontsize=15.0, fontweight="bold", color="white", va="center", ha="center",
                               bbox=dict(boxstyle="round,pad=0.35", facecolor="#e63946", edgecolor="none"))
             else:
-                ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
-                              fontsize=12.5, color="#222222", fontfamily="monospace", va="center")
+                ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
+                              fontsize=11.8, color="#222222", fontfamily="monospace", va="center")
 
             y_pos -= 0.088
 
