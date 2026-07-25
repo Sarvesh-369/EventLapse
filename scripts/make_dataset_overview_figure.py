@@ -40,7 +40,6 @@ def build_dataset_overview_figure(output_path: Path):
             "subtitle": "Physical Motion & Wall Contact Tracking",
             "question": "Question: How many times did the ball contact the walls?",
             "video_path": demo_dir / "videos/bounce_ball/bounce_N2_F1.0_seed0.mp4",
-            # 6 frames: 2 per row x 3 rows
             "sample_ts": [5.50, 6.49, 7.00, 7.49, 8.00, 8.50],
             "event_indices": [1, 3],
             "color": "#1f77b4",
@@ -102,13 +101,13 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    # Compact figure layout with minimal margins
-    fig = plt.figure(figsize=(18, 12), dpi=300, facecolor="white")
-    col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.12, left=0.015, right=0.985, top=0.98, bottom=0.015)
+    # Compact widescreen ratio (18x10) to maximize frame height and remove white space
+    fig = plt.figure(figsize=(18, 9.8), dpi=300, facecolor="white")
+    col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.08, left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     for c_idx, tinfo in enumerate(tasks_info):
         col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
-                                                   height_ratios=[0.7, 5.0, 3.3], hspace=0.10)
+                                                   height_ratios=[0.55, 5.4, 3.2], hspace=0.04)
 
         # --- 1. Header Box (Domain & Prompt) ---
         ax_header = fig.add_subplot(col_sub[0])
@@ -120,11 +119,11 @@ def build_dataset_overview_figure(output_path: Path):
         ax_header.add_patch(header_patch)
 
         ax_header.text(0.5, 0.74, tinfo["domain"], transform=ax_header.transAxes,
-                       fontsize=15, fontweight="bold", color=tinfo["color"], ha="center", va="center")
-        ax_header.text(0.5, 0.46, tinfo["subtitle"], transform=ax_header.transAxes,
-                       fontsize=10.5, fontweight="bold", color="#555555", ha="center", va="center")
-        ax_header.text(0.5, 0.18, tinfo["question"], transform=ax_header.transAxes,
-                       fontsize=9.5, fontstyle="italic", color="#111111", ha="center", va="center")
+                       fontsize=16, fontweight="bold", color=tinfo["color"], ha="center", va="center")
+        ax_header.text(0.5, 0.44, tinfo["subtitle"], transform=ax_header.transAxes,
+                       fontsize=11, fontweight="bold", color="#555555", ha="center", va="center")
+        ax_header.text(0.5, 0.16, tinfo["question"], transform=ax_header.transAxes,
+                       fontsize=10.5, fontstyle="italic", color="#111111", ha="center", va="center")
 
         # --- 2. 6 Large Frames arranged in 3 Rows of 2 Frames Each (2 per row) ---
         extracted = [(ts, extract_frame_at_timestamp(tinfo["video_path"], ts)) for ts in tinfo["sample_ts"]]
@@ -132,8 +131,8 @@ def build_dataset_overview_figure(output_path: Path):
         ax_frames_container = fig.add_subplot(col_sub[1])
         ax_frames_container.axis("off")
 
-        # 3 Rows x 2 Columns grid for frames
-        frame_rows_gs = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=col_sub[1], hspace=0.08, wspace=0.06)
+        # Extremely tight hspace (0.01) and wspace (0.04)
+        frame_rows_gs = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=col_sub[1], hspace=0.02, wspace=0.04)
 
         for k, (ts, img) in enumerate(extracted):
             r_idx = k // 2
@@ -154,15 +153,15 @@ def build_dataset_overview_figure(output_path: Path):
                 spine.set_edgecolor(border_color)
                 spine.set_linewidth(border_width)
 
-            # Top timestamp badge
+            # Top timestamp badge (Larger text!)
             ax_f.text(0.04, 0.82, f"t = {ts:.2f}s", transform=ax_f.transAxes,
-                      fontsize=9.5, fontweight="bold", color="white",
-                      bbox=dict(boxstyle="round,pad=0.25", facecolor="#111111", edgecolor="none", alpha=0.85))
+                      fontsize=11.0, fontweight="bold", color="white",
+                      bbox=dict(boxstyle="round,pad=0.25", facecolor="#111111", edgecolor="none", alpha=0.88))
 
-            # Event badge
+            # Event badge (Larger text!)
             if is_event:
                 ax_f.text(0.96, 0.82, f"★ Event #{event_num}", transform=ax_f.transAxes,
-                          fontsize=9.5, fontweight="bold", color="white", ha="right",
+                          fontsize=11.0, fontweight="bold", color="white", ha="right",
                           bbox=dict(boxstyle="round,pad=0.25", facecolor="#e63946", edgecolor="none", alpha=0.95))
 
         # --- 3. Full Detailed Generated Trace Box ---
@@ -175,31 +174,31 @@ def build_dataset_overview_figure(output_path: Path):
         ax_trace.add_patch(trace_patch)
 
         ax_trace.text(0.04, 0.91, "Generated MORSE Executable CoT Trace", transform=ax_trace.transAxes,
-                      fontsize=12.0, fontweight="bold", color=tinfo["color"], va="center")
+                      fontsize=13.0, fontweight="bold", color=tinfo["color"], va="center")
 
         y_pos = 0.80
         for line in tinfo["cot_lines"]:
             if not line:
-                y_pos -= 0.05
+                y_pos -= 0.04
                 continue
 
             if line.startswith("###"):
                 ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
-                              fontsize=10.5, fontweight="bold", color="#222222", va="center")
+                              fontsize=11.5, fontweight="bold", color="#222222", va="center")
             elif line.startswith("Final Answer:"):
                 ax_trace.text(0.04, y_pos, "Final Answer:", transform=ax_trace.transAxes,
-                              fontsize=11.5, fontweight="bold", color="#111111", va="center")
+                              fontsize=12.5, fontweight="bold", color="#111111", va="center")
                 ax_trace.text(0.46, y_pos, "\\boxed{2}", transform=ax_trace.transAxes,
-                              fontsize=12.5, fontweight="bold", color="white", va="center", ha="center",
+                              fontsize=13.5, fontweight="bold", color="white", va="center", ha="center",
                               bbox=dict(boxstyle="round,pad=0.3", facecolor="#e63946", edgecolor="none"))
             else:
                 ax_trace.text(0.04, y_pos, line, transform=ax_trace.transAxes,
-                              fontsize=9.5, color="#333333", fontfamily="monospace", va="center")
+                              fontsize=10.8, color="#333333", fontfamily="monospace", va="center")
 
             y_pos -= 0.088
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white")
+    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.02)
     plt.close()
     print(f"Saved dataset overview figure to {output_path}")
 
