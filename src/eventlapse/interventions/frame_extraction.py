@@ -21,7 +21,7 @@ def get_ffmpeg_binary() -> str:
 
     return "ffmpeg"
 
-def extract_frames_via_cv2(video_path: Path, target_fps: int, output_dir: Path) -> List[Path]:
+def extract_frames_via_cv2(video_path: Path, target_fps: int, output_dir: Path, max_dimension: int = 768) -> List[Path]:
     import cv2
     output_dir.mkdir(parents=True, exist_ok=True)
     
@@ -42,6 +42,12 @@ def extract_frames_via_cv2(video_path: Path, target_fps: int, output_dir: Path) 
             break
 
         if frame_count % frame_interval == 0:
+            h, w = frame.shape[:2]
+            if max(h, w) > max_dimension:
+                scale = max_dimension / float(max(h, w))
+                new_w, new_h = int(w * scale), int(h * scale)
+                frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
             out_file = output_dir / f"frame_{saved_count+1:04d}.jpg"
             cv2.imwrite(str(out_file), frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
             extracted_frames.append(out_file)
@@ -52,7 +58,7 @@ def extract_frames_via_cv2(video_path: Path, target_fps: int, output_dir: Path) 
     cap.release()
     return extracted_frames
 
-def extract_frames_at_fps(video_path: Path, target_fps: int, output_dir: Path) -> List[Path]:
+def extract_frames_at_fps(video_path: Path, target_fps: int, output_dir: Path, max_dimension: int = 768) -> List[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Check for existing extracted frames
@@ -67,7 +73,7 @@ def extract_frames_at_fps(video_path: Path, target_fps: int, output_dir: Path) -
         cmd = [
             ffmpeg_bin, "-y",
             "-i", str(video_path),
-            "-vf", f"fps={target_fps}",
+            "-vf", f"fps={target_fps},scale='min({max_dimension},iw)':-1",
             "-q:v", "2",
             str(out_pattern)
         ]
@@ -83,7 +89,7 @@ def extract_frames_at_fps(video_path: Path, target_fps: int, output_dir: Path) -
     # OpenCV Fallback if FFmpeg is not found
     try:
         logger.info(f"FFmpeg binary not found. Falling back to OpenCV for frame extraction at {target_fps} FPS...")
-        return extract_frames_via_cv2(video_path, target_fps, output_dir)
+        return extract_frames_via_cv2(video_path, target_fps, output_dir, max_dimension=max_dimension)
     except Exception as e:
         raise RuntimeError(
             f"Frame extraction failed: system FFmpeg binary not found and OpenCV fallback error ({e}). "
