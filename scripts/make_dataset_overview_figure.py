@@ -98,21 +98,22 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    # Widescreen figure layout tuned for exact 16:9 frame aspect ratios without stretching
-    fig = plt.figure(figsize=(18, 10.5), dpi=300, facecolor="white")
-    col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.08, left=0.015, right=0.985, top=0.985, bottom=0.015)
+    # Widescreen figure layout tuned with padding so all 4 box edges remain fully visible
+    fig = plt.figure(figsize=(18, 10.8), dpi=300, facecolor="white")
+    col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.10, left=0.02, right=0.98, top=0.98, bottom=0.02)
 
     for c_idx, tinfo in enumerate(tasks_info):
         col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
                                                    height_ratios=[0.8, 5.0, 4.0], hspace=0.10)
 
-        # --- 1. Header Box with Clear Dark Outline & Curved Corners ---
+        # --- 1. Header Box with All 4 Edges Outline ---
         ax_header = fig.add_subplot(col_sub[0])
         ax_header.axis("off")
 
-        header_patch = FancyBboxPatch((0.005, 0.02), 0.99, 0.96, transform=ax_header.transAxes,
+        header_patch = FancyBboxPatch((0.02, 0.05), 0.96, 0.90, transform=ax_header.transAxes,
                                       facecolor="#ffffff", edgecolor=tinfo["color"], linewidth=2.5,
-                                      boxstyle=BoxStyle("Round", pad=0.01, rounding_size=0.12))
+                                      boxstyle=BoxStyle("Round", pad=0.01, rounding_size=0.12),
+                                      clip_on=False)
         ax_header.add_patch(header_patch)
 
         ax_header.text(0.5, 0.68, tinfo["domain"], transform=ax_header.transAxes,
@@ -120,13 +121,12 @@ def build_dataset_overview_figure(output_path: Path):
         ax_header.text(0.5, 0.28, tinfo["question"], transform=ax_header.transAxes,
                        fontsize=11.5, fontstyle="italic", color="#111111", ha="center", va="center")
 
-        # --- 2. 6 Frames in Original 16:9 Aspect Ratio (No stretching) ---
+        # --- 2. 6 Frames in Original 16:9 Aspect Ratio ---
         extracted = [(ts, extract_frame_at_timestamp(tinfo["video_path"], ts)) for ts in tinfo["sample_ts"]]
 
         ax_frames_container = fig.add_subplot(col_sub[1])
         ax_frames_container.axis("off")
 
-        # Zero hspace and wspace to connect frame borders
         frame_rows_gs = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=col_sub[1], hspace=0.01, wspace=0.02)
 
         for k, (ts, img) in enumerate(extracted):
@@ -134,7 +134,7 @@ def build_dataset_overview_figure(output_path: Path):
             c_idx_sub = k % 2
 
             ax_f = fig.add_subplot(frame_rows_gs[r_idx, c_idx_sub])
-            ax_f.imshow(img) # Preserve original 16:9 frame aspect ratio!
+            ax_f.imshow(img)
             ax_f.set_xticks([])
             ax_f.set_yticks([])
 
@@ -159,41 +159,42 @@ def build_dataset_overview_figure(output_path: Path):
                           fontsize=11.5, fontweight="bold", color="white", ha="right",
                           bbox=dict(boxstyle="round,pad=0.25", facecolor="#e63946", edgecolor="none", alpha=0.95))
 
-        # --- 3. Trace Box with Clear Dark Outline & Curved Corners ---
+        # --- 3. Trace Box with All 4 Edges Outline ---
         ax_trace = fig.add_subplot(col_sub[2])
         ax_trace.axis("off")
 
-        trace_patch = FancyBboxPatch((0.005, 0.01), 0.99, 0.98, transform=ax_trace.transAxes,
+        trace_patch = FancyBboxPatch((0.02, 0.03), 0.96, 0.94, transform=ax_trace.transAxes,
                                      facecolor="#ffffff", edgecolor="#333333", linewidth=2.2,
-                                     boxstyle=BoxStyle("Round", pad=0.01, rounding_size=0.12))
+                                     boxstyle=BoxStyle("Round", pad=0.01, rounding_size=0.12),
+                                     clip_on=False)
         ax_trace.add_patch(trace_patch)
 
-        ax_trace.text(0.05, 0.91, "Executable Trace", transform=ax_trace.transAxes,
+        ax_trace.text(0.06, 0.90, "Executable Trace", transform=ax_trace.transAxes,
                       fontsize=15.0, fontweight="bold", color=tinfo["color"], va="center")
 
-        y_pos = 0.79
+        y_pos = 0.78
         for line in tinfo["cot_lines"]:
             if not line:
                 y_pos -= 0.03
                 continue
 
             if line.endswith(":"):
-                ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
+                ax_trace.text(0.06, y_pos, line, transform=ax_trace.transAxes,
                               fontsize=13.0, fontweight="bold", color="#111111", va="center")
             elif line.startswith("Final Answer:"):
-                ax_trace.text(0.05, y_pos, "Final Answer:", transform=ax_trace.transAxes,
+                ax_trace.text(0.06, y_pos, "Final Answer:", transform=ax_trace.transAxes,
                               fontsize=14.0, fontweight="bold", color="#111111", va="center")
                 ax_trace.text(0.48, y_pos, "\\boxed{2}", transform=ax_trace.transAxes,
                               fontsize=15.0, fontweight="bold", color="white", va="center", ha="center",
                               bbox=dict(boxstyle="round,pad=0.35", facecolor="#e63946", edgecolor="none"))
             else:
-                ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
+                ax_trace.text(0.06, y_pos, line, transform=ax_trace.transAxes,
                               fontsize=11.8, color="#222222", fontfamily="monospace", va="center")
 
             y_pos -= 0.088
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.01)
+    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.05)
     plt.close()
     print(f"Saved dataset overview figure to {output_path}")
 
