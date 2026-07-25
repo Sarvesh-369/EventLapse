@@ -98,18 +98,19 @@ def build_dataset_overview_figure(output_path: Path):
     plt.rcParams["figure.facecolor"] = "white"
     plt.rcParams["axes.facecolor"] = "white"
 
-    fig = plt.figure(figsize=(18, 10.8), dpi=300, facecolor="white")
-    col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.10, left=0.02, right=0.98, top=0.98, bottom=0.02)
+    # Widescreen layout with ultra-tight spacing between columns and vertical sections
+    fig = plt.figure(figsize=(18, 9.8), dpi=300, facecolor="white")
+    col_gs = gridspec.GridSpec(1, 3, figure=fig, wspace=0.03, left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     for c_idx, tinfo in enumerate(tasks_info):
         col_sub = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=col_gs[c_idx],
-                                                   height_ratios=[0.8, 5.0, 4.0], hspace=0.10)
+                                                   height_ratios=[0.75, 5.4, 3.6], hspace=0.015)
 
-        # --- 1. Header Box with Matching Rounded Rectangle Corners ---
+        # --- 1. Header Box ---
         ax_header = fig.add_subplot(col_sub[0])
         ax_header.axis("off")
 
-        header_patch = FancyBboxPatch((0.02, 0.05), 0.96, 0.90, transform=ax_header.transAxes,
+        header_patch = FancyBboxPatch((0.005, 0.02), 0.99, 0.96, transform=ax_header.transAxes,
                                       facecolor="#ffffff", edgecolor=tinfo["color"], linewidth=2.2,
                                       boxstyle=BoxStyle("Round", pad=0.01, rounding_size=0.04),
                                       clip_on=False)
@@ -126,7 +127,7 @@ def build_dataset_overview_figure(output_path: Path):
         ax_frames_container = fig.add_subplot(col_sub[1])
         ax_frames_container.axis("off")
 
-        frame_rows_gs = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=col_sub[1], hspace=0.01, wspace=0.02)
+        frame_rows_gs = gridspec.GridSpecFromSubplotSpec(3, 2, subplot_spec=col_sub[1], hspace=0.01, wspace=0.01)
 
         for k, (ts, img) in enumerate(extracted):
             r_idx = k // 2
@@ -158,42 +159,42 @@ def build_dataset_overview_figure(output_path: Path):
                           fontsize=11.5, fontweight="bold", color="white", ha="right",
                           bbox=dict(boxstyle="round,pad=0.25", facecolor="#e63946", edgecolor="none", alpha=0.95))
 
-        # --- 3. Trace Box with Matching Rounded Rectangle Corners ---
+        # --- 3. Trace Box ---
         ax_trace = fig.add_subplot(col_sub[2])
         ax_trace.axis("off")
 
-        trace_patch = FancyBboxPatch((0.02, 0.03), 0.96, 0.94, transform=ax_trace.transAxes,
+        trace_patch = FancyBboxPatch((0.005, 0.01), 0.99, 0.98, transform=ax_trace.transAxes,
                                      facecolor="#ffffff", edgecolor="#333333", linewidth=2.2,
                                      boxstyle=BoxStyle("Round", pad=0.01, rounding_size=0.04),
                                      clip_on=False)
         ax_trace.add_patch(trace_patch)
 
-        ax_trace.text(0.06, 0.90, "Executable Trace", transform=ax_trace.transAxes,
+        ax_trace.text(0.05, 0.91, "Executable Trace", transform=ax_trace.transAxes,
                       fontsize=15.0, fontweight="bold", color=tinfo["color"], va="center")
 
-        y_pos = 0.78
+        y_pos = 0.79
         for line in tinfo["cot_lines"]:
             if not line:
                 y_pos -= 0.03
                 continue
 
             if line.endswith(":"):
-                ax_trace.text(0.06, y_pos, line, transform=ax_trace.transAxes,
+                ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
                               fontsize=13.0, fontweight="bold", color="#111111", va="center")
             elif line.startswith("Final Answer:"):
-                ax_trace.text(0.06, y_pos, "Final Answer:", transform=ax_trace.transAxes,
+                ax_trace.text(0.05, y_pos, "Final Answer:", transform=ax_trace.transAxes,
                               fontsize=14.0, fontweight="bold", color="#111111", va="center")
                 ax_trace.text(0.48, y_pos, "\\boxed{2}", transform=ax_trace.transAxes,
                               fontsize=15.0, fontweight="bold", color="white", va="center", ha="center",
                               bbox=dict(boxstyle="round,pad=0.35", facecolor="#e63946", edgecolor="none"))
             else:
-                ax_trace.text(0.06, y_pos, line, transform=ax_trace.transAxes,
+                ax_trace.text(0.05, y_pos, line, transform=ax_trace.transAxes,
                               fontsize=11.8, color="#222222", fontfamily="monospace", va="center")
 
             y_pos -= 0.088
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.05)
+    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.01)
     plt.close()
     print(f"Saved dataset overview figure to {output_path}")
 
