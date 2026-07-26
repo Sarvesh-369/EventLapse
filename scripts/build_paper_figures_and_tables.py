@@ -173,7 +173,7 @@ def main():
     interventions_files = [
         ("Native + Structured (Baseline)", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl"),
         ("Dense Sampling (4 FPS)", "results_matrix_gemini_gemini-3.6-flash_frames_4fps_structured_trace.jsonl"),
-        ("Oracle Event Evidence", "results_matrix_gemini_gemini-3.6-flash_oracle_evidence_structured_trace.jsonl"),
+        ("Keyframe Evidence", "results_matrix_gemini_gemini-3.6-flash_oracle_evidence_structured_trace.jsonl"),
         ("Direct Answer", "results_matrix_gemini_gemini-3.6-flash_native_video_direct.jsonl"),
         ("Structured Trace", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl"),
         ("Multi-Turn Verification", "results_matrix_gemini_gemini-3.6-flash_native_video_multi_turn_verification.jsonl"),
@@ -251,14 +251,14 @@ def main():
                 pivot,
                 annot=True,
                 fmt=".2f",
-                cmap="YlGnBu",
+                cmap="mako_r",
                 ax=axes[idx],
                 vmin=0.0,
                 vmax=1.0,
                 cbar=(idx == 2),
                 cbar_kws={"label": "Final Answer Accuracy"} if idx == 2 else None
             )
-            axes[idx].set_title(f"{domain_labels[domain]} ($N \\times F$ Matrix)", fontsize=13, fontweight="bold", pad=10)
+            axes[idx].set_title(f"{domain_labels[domain]}", fontsize=14, fontweight="bold", pad=10)
             axes[idx].set_xlabel("Event Frequency F (Hz)", fontsize=11, fontweight="bold")
             axes[idx].set_ylabel("Event Count N", fontsize=11, fontweight="bold")
 
@@ -273,7 +273,7 @@ def main():
     # -------------------------------------------------------------
     fig, (ax_a, ax_b, ax_c) = plt.subplots(1, 3, figsize=(18, 5), dpi=300)
 
-    # Panel A: Sampling Densities vs N
+    # Panel A: Visual Sampling Densities vs N
     fps_modes = [("1 FPS", "frames_1fps"), ("2 FPS", "frames_2fps"), ("4 FPS", "frames_4fps"), ("8 FPS", "frames_8fps"), ("16 FPS", "frames_16fps")]
     colors_fps = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
 
@@ -295,17 +295,17 @@ def main():
                 ax_a.plot(n_grouped.index, n_grouped.values, marker="o", label=label, color=color, linewidth=2)
 
     ax_a.axhline(0.80, color="red", linestyle="--", alpha=0.7, label="τ = 0.80")
-    ax_a.set_title("A. Visual Sampling Densities (Bounce Ball)", fontsize=12, fontweight="bold")
+    ax_a.set_title("A. Visual Sampling Densities", fontsize=12, fontweight="bold")
     ax_a.set_xlabel("Event Count N", fontsize=11, fontweight="bold")
     ax_a.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
     ax_a.set_ylim(-0.02, 1.05)
     ax_a.grid(True, linestyle=":", alpha=0.6)
     ax_a.legend(fontsize=9, loc="upper right")
 
-    # Panel B: Oracle Evidence vs Native vs 16 FPS vs N
+    # Panel B: Keyframe Evidence vs Native vs 16 FPS vs N
     panel_b_modes = [("Native Video", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl", "#1f77b4"),
                      ("16 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_16fps_structured_trace.jsonl", "#9467bd"),
-                     ("Oracle Keyframes", "results_matrix_gemini_gemini-3.6-flash_oracle_evidence_structured_trace.jsonl", "#e63946")]
+                     ("Keyframe", "results_matrix_gemini_gemini-3.6-flash_oracle_evidence_structured_trace.jsonl", "#e63946")]
 
     for label, fname, color in panel_b_modes:
         fpath = outputs_dir / fname
@@ -322,10 +322,10 @@ def main():
             if recs:
                 df_b = pd.DataFrame(recs)
                 n_grouped = df_b.groupby("N_count")["exact_match_result"].mean()
-                ax_b.plot(n_grouped.index, n_grouped.values, marker="s" if "Oracle" in label else "o", label=label, color=color, linewidth=2.2)
+                ax_b.plot(n_grouped.index, n_grouped.values, marker="s" if label == "Keyframe" else "o", label=label, color=color, linewidth=2.2)
 
     ax_b.axhline(0.80, color="red", linestyle="--", alpha=0.7, label="τ = 0.80")
-    ax_b.set_title("B. Oracle Evidence vs Native & 16 FPS", fontsize=12, fontweight="bold")
+    ax_b.set_title("B. Keyframe Evidence vs Native & 16 FPS", fontsize=12, fontweight="bold")
     ax_b.set_xlabel("Event Count N", fontsize=11, fontweight="bold")
     ax_b.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
     ax_b.set_ylim(-0.02, 1.05)
@@ -357,7 +357,7 @@ def main():
                 ax_c.plot(n_grouped.index, n_grouped.values, marker="o", label=label, color=color, linewidth=2)
 
     ax_c.axhline(0.80, color="red", linestyle="--", alpha=0.7, label="τ = 0.80")
-    ax_c.set_title("C. Prompting & Reasoning Formats (Bounce Ball)", fontsize=12, fontweight="bold")
+    ax_c.set_title("C. Prompting & Reasoning Formats", fontsize=12, fontweight="bold")
     ax_c.set_xlabel("Event Count N", fontsize=11, fontweight="bold")
     ax_c.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
     ax_c.set_ylim(-0.02, 1.05)
