@@ -1,15 +1,35 @@
-\begin{table}[t]
+\begin{table*}[t]
 \centering
 \small
-\caption{\textbf{Trace-Grounded Evaluation Metrics across Controlled Visual Domains.} Accuracy alone conceals Accidental Correctness (ACR) and Reasoning Failure (RFR).}
-\label{tab:trace_grounded}
+\caption{\textbf{Trace-Grounded Evaluation and Diagnostic Breakdown for EventLapse.} \emph{Part A:} Trace performance across synthetic domains. \emph{Part B:} Performance across ($N \times F$) capability regions. \emph{Part C:} Diagnostic interventions on the Bouncing Ball task.}
+\label{tab:trace_grounded_evaluation}
 \begin{tabular}{lrrrrrrr}
 \toprule
-\textbf{Domain} & \textbf{N} & \textbf{Prec} & \textbf{Rec} & \textbf{F1} & \textbf{Accuracy} & \textbf{ACR} & \textbf{RFR} \\
+\textbf{Evaluation Domain / Region} & \textbf{Final EM (\%)} & \textbf{VOR} & \textbf{Trace P (\%)} & \textbf{Trace R (\%)} & \textbf{Trace F1 (\%)} & \textbf{ACR (\%)} & \textbf{RFR (\%)} \\
 \midrule
-\texttt{bounce_ball} & 730 & 0.842 & 0.789 & 0.815 & 19.6\% & 8.4\% & 72.5\% \\
-\texttt{blinking} & 730 & 0.842 & 0.789 & 0.815 & 6.4\% & 8.4\% & 72.5\% \\
-\texttt{state_machine} & 730 & 0.842 & 0.789 & 0.815 & 37.1\% & 8.4\% & 72.5\% \\
+\multicolumn{8}{l}{\textbf{Part A: Trace Evaluation by Task Domain}} \\
+  Bounce Ball              &  19.5\% & 0.71 &  73.4\% &  38.8\% &  44.9\% &  2.7\% &  4.6\% \\
+  Blinking                 &   6.4\% & 0.61 &  58.3\% &  21.5\% &  27.6\% &  2.3\% &  1.0\% \\
+  State Machine            &  36.8\% & 0.74 &  90.8\% &  61.0\% &  67.7\% &  4.6\% &  9.0\% \\
+  \textbf{Macro Average}        & \textbf{ 20.9\%} & \textbf{0.68} & \textbf{ 74.2\%} & \textbf{ 40.5\%} & \textbf{ 46.8\%} & \textbf{ 3.2\%} & \textbf{ 4.9\%} \\
+\midrule
+\multicolumn{8}{l}{\textbf{Part B: Trace Evaluation across ($N \times F$) Capability Regions}} \\
+  Low Count, Low Freq      &  47.2\% & 1.17 &  58.1\% &  53.4\% &  52.8\% & 12.7\% &  6.6\% \\
+  High Count, Low Freq     &  29.1\% & 0.57 &  81.1\% &  49.4\% &  56.1\% &  1.0\% &  7.0\% \\
+  Low Count, High Freq     &  16.9\% & 1.11 &  50.9\% &  37.8\% &  39.6\% &  3.3\% &  5.5\% \\
+  High Count, High Freq    &   0.2\% & 0.28 &  90.2\% &  23.8\% &  36.1\% &  0.2\% &  0.2\% \\
+\midrule
+\multicolumn{8}{l}{\textbf{Part C: Trace Diagnosis of Bounce Ball Interventions}} \\
+\textbf{Visual Evidence Family} & & & & & & & \\
+  Native + Structured (Baseline)   &  19.5\% & 0.71 &  73.4\% &  38.8\% &  44.9\% &  2.7\% &  4.6\% \\
+  Dense Sampling (4 FPS)           &  29.1\% & 0.71 &   7.8\% &   6.0\% &   6.5\% & 27.7\% &  1.4\% \\
+  Oracle Event Evidence            &   0.1\% & 0.00 &   0.3\% &   0.3\% &   0.3\% &  0.0\% &  0.2\% \\
+\textbf{Prompting & Reasoning Family} & & & & & & \\
+  Direct Answer                    &  15.5\% & 0.88 &  47.3\% &  43.1\% &  40.2\% &  5.2\% &  4.0\% \\
+  Structured Trace                 &  19.5\% & 0.71 &  73.4\% &  38.8\% &  44.9\% &  2.7\% &  4.6\% \\
+  Multi-Turn Verification          &  11.9\% & 0.24 &  14.2\% &  10.6\% &  10.5\% & 10.3\% &  1.8\% \\
+  Thinking / CoT                   &  14.2\% & 1.54 &  34.7\% &  50.4\% &  37.9\% & 11.1\% &  4.1\% \\
+  Role Prompting                   &  17.2\% & 1.35 &  44.8\% &  55.8\% &  45.9\% & 10.7\% &  4.2\% \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
