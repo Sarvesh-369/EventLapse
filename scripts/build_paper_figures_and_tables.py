@@ -42,7 +42,7 @@ def load_gt_events(sample_id, domain, root_dir):
 def compute_metrics(records, root_dir, delta_t=1.0):
     total = len(records)
     if total == 0:
-        return {"em": 0.0, "vor": 0.0, "p": 0.0, "r": 0.0, "f1": 0.0, "acr": 0.0, "rfr": 0.0}
+        return {"acc": 0.0, "vor": 0.0, "p": 0.0, "r": 0.0, "f1": 0.0, "acr": 0.0, "rfr": 0.0}
     
     em_hits = 0
     vor_sum = 0.0
@@ -96,7 +96,7 @@ def compute_metrics(records, root_dir, delta_t=1.0):
             rfr_count += 1
 
     return {
-        "em": (em_hits / total) * 100.0,
+        "acc": (em_hits / total) * 100.0,
         "vor": vor_sum / total,
         "p": (p_sum / total) * 100.0,
         "r": (r_sum / total) * 100.0,
@@ -109,13 +109,26 @@ def main():
     root_dir = Path(__file__).resolve().parent.parent
     outputs_dir = root_dir / "outputs"
     paper_dir = outputs_dir / "paper"
+
+    # Clean paper_dir completely
+    if paper_dir.exists():
+        for item in paper_dir.glob("*"):
+            if item.is_file():
+                item.unlink()
     paper_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"=== Building Paper Figures & Tables in {paper_dir} ===")
+    print(f"=== Generating Required Paper Artifacts in {paper_dir} ===")
 
     # -------------------------------------------------------------
-    # 1. TABLE 1: Complete 3-Part Trace-Grounded Evaluation Table
+    # FIGURE 1: Generate Dataset Overview Figure
     # -------------------------------------------------------------
+    os.system("python3 scripts/make_dataset_overview_figure.py")
+    overview_fig = outputs_dir / "dataset_overview_figure.png"
+    if overview_fig.exists():
+        os.system(f"cp {overview_fig} {paper_dir}/fig_1_dataset_overview.png")
+        print(f"Saved {paper_dir}/fig_1_dataset_overview.png")
+
+    # Load baseline records for Table 1 and Figure 3
     baseline_file = outputs_dir / "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl"
     baseline_records = []
     if baseline_file.exists():
@@ -129,16 +142,19 @@ def main():
                         rec["F_hz"] = freq
                         baseline_records.append(rec)
 
+    # -------------------------------------------------------------
+    # TABLE 1: 3-Part Trace-Grounded Evaluation Table
+    # -------------------------------------------------------------
     # Part A: By Task
     tasks = [("Bounce Ball", "bounce_ball"), ("Blinking", "blinking"), ("State Machine", "state_machine")]
     part_a_rows = []
     for label, domain in tasks:
         sub = [r for r in baseline_records if r["task"] == domain]
         m = compute_metrics(sub, root_dir)
-        part_a_rows.append(f"  {label:<24} & {m['em']:5.1f}\\% & {m['vor']:4.2f} & {m['p']:5.1f}\\% & {m['r']:5.1f}\\% & {m['f1']:5.1f}\\% & {m['acr']:4.1f}\\% & {m['rfr']:4.1f}\\% \\\\")
+        part_a_rows.append(f"  {label:<24} & {m['acc']:5.1f}\\% & {m['vor']:4.2f} & {m['p']:5.1f}\\% & {m['r']:5.1f}\\% & {m['f1']:5.1f}\\% & {m['acr']:4.1f}\\% & {m['rfr']:4.1f}\\% \\\\")
 
     m_macro = compute_metrics(baseline_records, root_dir)
-    part_a_rows.append(f"  \\textbf{{Macro Average}}        & \\textbf{{{m_macro['em']:5.1f}\\%}} & \\textbf{{{m_macro['vor']:4.2f}}} & \\textbf{{{m_macro['p']:5.1f}\\%}} & \\textbf{{{m_macro['r']:5.1f}\\%}} & \\textbf{{{m_macro['f1']:5.1f}\\%}} & \\textbf{{{m_macro['acr']:4.1f}\\%}} & \\textbf{{{m_macro['rfr']:4.1f}\\%}} \\\\")
+    part_a_rows.append(f"  \\textbf{{Macro Average}}        & \\textbf{{{m_macro['acc']:5.1f}\\%}} & \\textbf{{{m_macro['vor']:4.2f}}} & \\textbf{{{m_macro['p']:5.1f}\\%}} & \\textbf{{{m_macro['r']:5.1f}\\%}} & \\textbf{{{m_macro['f1']:5.1f}\\%}} & \\textbf{{{m_macro['acr']:4.1f}\\%}} & \\textbf{{{m_macro['rfr']:4.1f}\\%}} \\\\")
 
     # Part B: Region Subsets
     regions = [
@@ -151,7 +167,7 @@ def main():
     for label, cond in regions:
         sub = [r for r in baseline_records if cond(r)]
         m = compute_metrics(sub, root_dir)
-        part_b_rows.append(f"  {label:<24} & {m['em']:5.1f}\\% & {m['vor']:4.2f} & {m['p']:5.1f}\\% & {m['r']:5.1f}\\% & {m['f1']:5.1f}\\% & {m['acr']:4.1f}\\% & {m['rfr']:4.1f}\\% \\\\")
+        part_b_rows.append(f"  {label:<24} & {m['acc']:5.1f}\\% & {m['vor']:4.2f} & {m['p']:5.1f}\\% & {m['r']:5.1f}\\% & {m['f1']:5.1f}\\% & {m['acr']:4.1f}\\% & {m['rfr']:4.1f}\\% \\\\")
 
     # Part C: Bounce Ball Interventions
     interventions_files = [
@@ -176,7 +192,7 @@ def main():
                         if rec.get("task") == "bounce_ball" and rec.get("exact_match_result") is not None:
                             sub.append(rec)
         m = compute_metrics(sub, root_dir)
-        part_c_rows.append(f"  {label:<32} & {m['em']:5.1f}\\% & {m['vor']:4.2f} & {m['p']:5.1f}\\% & {m['r']:5.1f}\\% & {m['f1']:5.1f}\\% & {m['acr']:4.1f}\\% & {m['rfr']:4.1f}\\% \\\\")
+        part_c_rows.append(f"  {label:<32} & {m['acc']:5.1f}\\% & {m['vor']:4.2f} & {m['p']:5.1f}\\% & {m['r']:5.1f}\\% & {m['f1']:5.1f}\\% & {m['acr']:4.1f}\\% & {m['rfr']:4.1f}\\% \\\\")
 
     tab1_latex = f"""\\begin{{table*}}[t]
 \\centering
@@ -185,7 +201,7 @@ def main():
 \\label{{tab:trace_grounded_evaluation}}
 \\begin{{tabular}}{{lrrrrrrr}}
 \\toprule
-\\textbf{{Evaluation Domain / Region}} & \\textbf{{Final EM (\\%)}} & \\textbf{{VOR}} & \\textbf{{Trace P (\\%)}} & \\textbf{{Trace R (\\%)}} & \\textbf{{Trace F1 (\\%)}} & \\textbf{{ACR (\\%)}} & \\textbf{{RFR (\\%)}} \\\\
+\\textbf{{Evaluation Domain / Region}} & \\textbf{{Final Answer Accuracy (\\%)}} & \\textbf{{VOR}} & \\textbf{{Trace P (\\%)}} & \\textbf{{Trace R (\\%)}} & \\textbf{{Trace F1 (\\%)}} & \\textbf{{ACR (\\%)}} & \\textbf{{RFR (\\%)}} \\\\
 \\midrule
 \\multicolumn{{8}}{{l}}{{\\textbf{{Part A: Trace Evaluation by Task Domain}}}} \\\\
 {chr(10).join(part_a_rows)}
@@ -208,7 +224,7 @@ def main():
     print(f"Saved {tab1_path}")
 
     # -------------------------------------------------------------
-    # 2. FIGURE 3: N x F Heatmaps across Baseline Domains
+    # FIGURE 3: N x F Heatmaps across Baseline Domains
     # -------------------------------------------------------------
     df_base = pd.DataFrame(baseline_records)
     fig, axes = plt.subplots(1, 3, figsize=(18, 5.5), dpi=300)
@@ -240,7 +256,7 @@ def main():
                 vmin=0.0,
                 vmax=1.0,
                 cbar=(idx == 2),
-                cbar_kws={"label": "Exact Match Accuracy"} if idx == 2 else None
+                cbar_kws={"label": "Final Answer Accuracy"} if idx == 2 else None
             )
             axes[idx].set_title(f"{domain_labels[domain]} ($N \\times F$ Matrix)", fontsize=13, fontweight="bold", pad=10)
             axes[idx].set_xlabel("Event Frequency F (Hz)", fontsize=11, fontweight="bold")
@@ -253,11 +269,11 @@ def main():
     print(f"Saved {fig_3_path}")
 
     # -------------------------------------------------------------
-    # 3. FIGURE 4: Intervention Analysis Plots (3 Panels)
+    # FIGURE 4: Intervention Analysis Line Plots (Panels A, B, C)
     # -------------------------------------------------------------
     fig, (ax_a, ax_b, ax_c) = plt.subplots(1, 3, figsize=(18, 5), dpi=300)
 
-    # Panel A: Sampling Densities (1, 2, 4, 8, 16 FPS vs N)
+    # Panel A: Sampling Densities vs N
     fps_modes = [("1 FPS", "frames_1fps"), ("2 FPS", "frames_2fps"), ("4 FPS", "frames_4fps"), ("8 FPS", "frames_8fps"), ("16 FPS", "frames_16fps")]
     colors_fps = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
 
@@ -281,12 +297,12 @@ def main():
     ax_a.axhline(0.80, color="red", linestyle="--", alpha=0.7, label="τ = 0.80")
     ax_a.set_title("A. Visual Sampling Densities (Bounce Ball)", fontsize=12, fontweight="bold")
     ax_a.set_xlabel("Event Count N", fontsize=11, fontweight="bold")
-    ax_a.set_ylabel("Exact Match Accuracy", fontsize=11, fontweight="bold")
+    ax_a.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
     ax_a.set_ylim(-0.02, 1.05)
     ax_a.grid(True, linestyle=":", alpha=0.6)
     ax_a.legend(fontsize=9, loc="upper right")
 
-    # Panel B: Oracle Evidence vs Native vs 16 FPS
+    # Panel B: Oracle Evidence vs Native vs 16 FPS vs N
     panel_b_modes = [("Native Video", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl", "#1f77b4"),
                      ("16 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_16fps_structured_trace.jsonl", "#9467bd"),
                      ("Oracle Keyframes", "results_matrix_gemini_gemini-3.6-flash_oracle_evidence_structured_trace.jsonl", "#e63946")]
@@ -311,21 +327,19 @@ def main():
     ax_b.axhline(0.80, color="red", linestyle="--", alpha=0.7, label="τ = 0.80")
     ax_b.set_title("B. Oracle Evidence vs Native & 16 FPS", fontsize=12, fontweight="bold")
     ax_b.set_xlabel("Event Count N", fontsize=11, fontweight="bold")
-    ax_b.set_ylabel("Exact Match Accuracy", fontsize=11, fontweight="bold")
+    ax_b.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
     ax_b.set_ylim(-0.02, 1.05)
     ax_b.grid(True, linestyle=":", alpha=0.6)
     ax_b.legend(fontsize=9, loc="upper right")
 
-    # Panel C: Prompting Strategies Macro Accuracy
-    prompt_strats = [("Direct", "results_matrix_gemini_gemini-3.6-flash_native_video_direct.jsonl"),
-                     ("Structured", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl"),
-                     ("Multi-Turn", "results_matrix_gemini_gemini-3.6-flash_native_video_multi_turn_verification.jsonl"),
-                     ("Thinking", "results_matrix_gemini_gemini-3.6-flash_native_video_thinking.jsonl"),
-                     ("Role Prompt", "results_matrix_gemini_gemini-3.6-flash_native_video_role_prompting.jsonl")]
+    # Panel C: Prompting Strategies Line Plot vs N
+    prompt_strats = [("Direct", "results_matrix_gemini_gemini-3.6-flash_native_video_direct.jsonl", "#1f77b4"),
+                     ("Structured Trace", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl", "#2ca02c"),
+                     ("Multi-Turn Verification", "results_matrix_gemini_gemini-3.6-flash_native_video_multi_turn_verification.jsonl", "#d62728"),
+                     ("Thinking / CoT", "results_matrix_gemini_gemini-3.6-flash_native_video_thinking.jsonl", "#ff7f0e"),
+                     ("Role Prompting", "results_matrix_gemini_gemini-3.6-flash_native_video_role_prompting.jsonl", "#9467bd")]
 
-    p_names = []
-    p_accs = []
-    for label, fname in prompt_strats:
+    for label, fname, color in prompt_strats:
         fpath = outputs_dir / fname
         if fpath.exists():
             recs = []
@@ -333,24 +347,22 @@ def main():
                 for line in f:
                     if line.strip():
                         r = json.loads(line)
-                        if r.get("exact_match_result") is not None:
-                            recs.append(r.get("exact_match_result", False))
+                        if r.get("task") == "bounce_ball" and r.get("exact_match_result") is not None:
+                            n, _ = parse_n_and_f(r["sample_id"])
+                            r["N_count"] = n
+                            recs.append(r)
             if recs:
-                p_names.append(label)
-                p_accs.append(np.mean(recs))
+                df_c = pd.DataFrame(recs)
+                n_grouped = df_c.groupby("N_count")["exact_match_result"].mean()
+                ax_c.plot(n_grouped.index, n_grouped.values, marker="o", label=label, color=color, linewidth=2)
 
-    bars_c = ax_c.bar(p_names, p_accs, color="#2ca02c", edgecolor="#111111", linewidth=1.2, alpha=0.85)
     ax_c.axhline(0.80, color="red", linestyle="--", alpha=0.7, label="τ = 0.80")
-    ax_c.set_title("C. Prompting & Reasoning Formats", fontsize=12, fontweight="bold")
-    ax_c.set_xlabel("Prompting Strategy", fontsize=11, fontweight="bold")
-    ax_c.set_ylabel("Macro Accuracy", fontsize=11, fontweight="bold")
-    ax_c.set_ylim(0, 0.5)
-    ax_c.grid(axis="y", linestyle=":", alpha=0.6)
-    plt.setp(ax_c.get_xticklabels(), rotation=15, ha="right")
-
-    for bar in bars_c:
-        yval = bar.get_height()
-        ax_c.text(bar.get_x() + bar.get_width()/2.0, yval + 0.01, f"{yval:.1%}", ha="center", va="bottom", fontsize=10, fontweight="bold")
+    ax_c.set_title("C. Prompting & Reasoning Formats (Bounce Ball)", fontsize=12, fontweight="bold")
+    ax_c.set_xlabel("Event Count N", fontsize=11, fontweight="bold")
+    ax_c.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
+    ax_c.set_ylim(-0.02, 1.05)
+    ax_c.grid(True, linestyle=":", alpha=0.6)
+    ax_c.legend(fontsize=9, loc="upper right")
 
     plt.tight_layout()
     fig_4_path = paper_dir / "fig_4_intervention_analysis.png"
@@ -358,39 +370,7 @@ def main():
     plt.close()
     print(f"Saved {fig_4_path}")
 
-    # -------------------------------------------------------------
-    # 4. FIGURE 5: Real-World Transfer (In-Boundary vs Out-of-Boundary)
-    # -------------------------------------------------------------
-    fig, ax_5 = plt.subplots(figsize=(7, 5), dpi=300)
-
-    in_bound_sub = [r["exact_match_result"] for r in baseline_records if r["N_count"] <= 4]
-    out_bound_sub = [r["exact_match_result"] for r in baseline_records if r["N_count"] > 4]
-
-    in_acc = np.mean(in_bound_sub) if in_bound_sub else 0.0
-    out_acc = np.mean(out_bound_sub) if out_bound_sub else 0.0
-
-    categories = ["In-Boundary (N ≤ 4)", "Out-of-Boundary (N > 4)"]
-    accuracies = [in_acc, out_acc]
-    colors = ["#1f77b4", "#d62728"]
-
-    bars_5 = ax_5.bar(categories, accuracies, color=colors, edgecolor="#111111", linewidth=1.2, width=0.55, alpha=0.88)
-    ax_5.axhline(0.80, color="red", linestyle="--", linewidth=1.5, label="Target Reliability (τ = 0.80)")
-    ax_5.set_title("Real-World Event Repetition Transfer Performance", fontsize=13, fontweight="bold", pad=12)
-    ax_5.set_ylabel("Exact Match Accuracy", fontsize=11, fontweight="bold")
-    ax_5.set_ylim(0, 0.6)
-    ax_5.grid(axis="y", linestyle=":", alpha=0.6)
-
-    for bar in bars_5:
-        yval = bar.get_height()
-        ax_5.text(bar.get_x() + bar.get_width()/2.0, yval + 0.01, f"{yval:.1%}", ha="center", va="bottom", fontsize=11, fontweight="bold")
-
-    plt.tight_layout()
-    fig_5_path = paper_dir / "fig_5_real_world_transfer.png"
-    plt.savefig(fig_5_path, dpi=300, bbox_inches="tight")
-    plt.close()
-    print(f"Saved {fig_5_path}")
-
-    # Copy to AAAI_27 directory
+    # Copy ONLY the required generated files to AAAI_27 directory
     aaai_figs = root_dir.parent / "morse papers/morse_profile/AAAI_27/figs"
     aaai_tabs = root_dir.parent / "morse papers/morse_profile/AAAI_27/tables-tex"
     if aaai_figs.exists():
@@ -398,7 +378,7 @@ def main():
     if aaai_tabs.exists():
         os.system(f"cp {paper_dir}/*.tex '{aaai_tabs}/'")
 
-    print("\n=== All Paper Figures and Tables Successfully Built & Synced! ===")
+    print("\n=== Clean Generation Complete: Saved 3 Figures and 1 Table to outputs/paper/ and synced to AAAI_27! ===")
 
 if __name__ == "__main__":
     main()
