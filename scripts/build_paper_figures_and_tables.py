@@ -235,14 +235,12 @@ def main():
     for idx, domain in enumerate(["bounce_ball", "blinking", "state_machine"]):
         sub_df = df_base[df_base["task"] == domain]
         if not sub_df.empty:
-            # Pivot with F_hz on index (Y-axis) and N_count on columns (X-axis)
             pivot = sub_df.pivot_table(
                 index="F_hz",
                 columns="N_count",
                 values="exact_match_result",
                 aggfunc="mean"
             )
-            # Fill N=0 column if present
             if 0 in pivot.columns:
                 n0_mean = pivot[0].dropna().mean()
                 if not np.isnan(n0_mean):
@@ -270,11 +268,11 @@ def main():
     print(f"Saved {fig_3_path}")
 
     # -------------------------------------------------------------
-    # FIGURE 4: Intervention Analysis Line Plots (Panels A, B, C)
+    # FIGURE 4: Intervention Analysis Line Plots vs N x F (Panels A, B, C)
     # -------------------------------------------------------------
     fig, (ax_a, ax_b, ax_c) = plt.subplots(1, 3, figsize=(18, 5), dpi=300)
 
-    # Panel A: Visual Sampling Densities vs N
+    # Panel A: Visual Sampling Densities vs N x F
     fps_modes = [("1 FPS", "frames_1fps"), ("2 FPS", "frames_2fps"), ("4 FPS", "frames_4fps"), ("8 FPS", "frames_8fps"), ("16 FPS", "frames_16fps")]
     colors_fps = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
 
@@ -287,23 +285,23 @@ def main():
                     if line.strip():
                         r = json.loads(line)
                         if r.get("task") == "bounce_ball" and r.get("exact_match_result") is not None:
-                            n, _ = parse_n_and_f(r["sample_id"])
-                            r["N_count"] = n
+                            n, freq = parse_n_and_f(r["sample_id"])
+                            r["NxF"] = round(n * freq, 2)
                             recs.append(r)
             if recs:
                 df_fps = pd.DataFrame(recs)
-                n_grouped = df_fps.groupby("N_count")["exact_match_result"].mean()
-                ax_a.plot(n_grouped.index, n_grouped.values, marker="o", label=label, color=color, linewidth=2)
+                nxf_grouped = df_fps.groupby("NxF")["exact_match_result"].mean()
+                ax_a.plot(nxf_grouped.index, nxf_grouped.values, marker="o", label=label, color=color, linewidth=2, markersize=4)
 
     ax_a.axhline(0.80, color="red", linestyle="--", alpha=0.7, label="τ = 0.80")
     ax_a.set_title("A. Visual Sampling Densities", fontsize=12, fontweight="bold")
-    ax_a.set_xlabel("Event Count N", fontsize=11, fontweight="bold")
+    ax_a.set_xlabel("Event Complexity (N × F)", fontsize=11, fontweight="bold")
     ax_a.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
     ax_a.set_ylim(-0.02, 1.05)
     ax_a.grid(True, linestyle=":", alpha=0.6)
     ax_a.legend(fontsize=9, loc="upper right")
 
-    # Panel B: Keyframe Evidence vs Native vs 16 FPS vs N
+    # Panel B: Keyframe Evidence vs Native vs 16 FPS vs N x F
     panel_b_modes = [("Native Video", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl", "#1f77b4"),
                      ("16 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_16fps_structured_trace.jsonl", "#9467bd"),
                      ("Keyframe", "results_matrix_gemini_gemini-3.6-flash_oracle_evidence_structured_trace.jsonl", "#e63946")]
@@ -317,23 +315,23 @@ def main():
                     if line.strip():
                         r = json.loads(line)
                         if r.get("task") == "bounce_ball" and r.get("exact_match_result") is not None:
-                            n, _ = parse_n_and_f(r["sample_id"])
-                            r["N_count"] = n
+                            n, freq = parse_n_and_f(r["sample_id"])
+                            r["NxF"] = round(n * freq, 2)
                             recs.append(r)
             if recs:
                 df_b = pd.DataFrame(recs)
-                n_grouped = df_b.groupby("N_count")["exact_match_result"].mean()
-                ax_b.plot(n_grouped.index, n_grouped.values, marker="s" if label == "Keyframe" else "o", label=label, color=color, linewidth=2.2)
+                nxf_grouped = df_b.groupby("NxF")["exact_match_result"].mean()
+                ax_b.plot(nxf_grouped.index, nxf_grouped.values, marker="s" if label == "Keyframe" else "o", label=label, color=color, linewidth=2.2, markersize=4)
 
     ax_b.axhline(0.80, color="red", linestyle="--", alpha=0.7, label="τ = 0.80")
     ax_b.set_title("B. Keyframe Evidence vs Native & 16 FPS", fontsize=12, fontweight="bold")
-    ax_b.set_xlabel("Event Count N", fontsize=11, fontweight="bold")
+    ax_b.set_xlabel("Event Complexity (N × F)", fontsize=11, fontweight="bold")
     ax_b.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
     ax_b.set_ylim(-0.02, 1.05)
     ax_b.grid(True, linestyle=":", alpha=0.6)
     ax_b.legend(fontsize=9, loc="upper right")
 
-    # Panel C: Prompting Strategies Line Plot vs N
+    # Panel C: Prompting Strategies Line Plot vs N x F
     prompt_strats = [("Direct", "results_matrix_gemini_gemini-3.6-flash_native_video_direct.jsonl", "#1f77b4"),
                      ("Structured Trace", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl", "#2ca02c"),
                      ("Multi-Turn Verification", "results_matrix_gemini_gemini-3.6-flash_native_video_multi_turn_verification.jsonl", "#d62728"),
@@ -349,17 +347,17 @@ def main():
                     if line.strip():
                         r = json.loads(line)
                         if r.get("task") == "bounce_ball" and r.get("exact_match_result") is not None:
-                            n, _ = parse_n_and_f(r["sample_id"])
-                            r["N_count"] = n
+                            n, freq = parse_n_and_f(r["sample_id"])
+                            r["NxF"] = round(n * freq, 2)
                             recs.append(r)
             if recs:
                 df_c = pd.DataFrame(recs)
-                n_grouped = df_c.groupby("N_count")["exact_match_result"].mean()
-                ax_c.plot(n_grouped.index, n_grouped.values, marker="o", label=label, color=color, linewidth=2)
+                nxf_grouped = df_c.groupby("NxF")["exact_match_result"].mean()
+                ax_c.plot(nxf_grouped.index, nxf_grouped.values, marker="o", label=label, color=color, linewidth=2, markersize=4)
 
     ax_c.axhline(0.80, color="red", linestyle="--", alpha=0.7, label="τ = 0.80")
     ax_c.set_title("C. Prompting & Reasoning Formats", fontsize=12, fontweight="bold")
-    ax_c.set_xlabel("Event Count N", fontsize=11, fontweight="bold")
+    ax_c.set_xlabel("Event Complexity (N × F)", fontsize=11, fontweight="bold")
     ax_c.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
     ax_c.set_ylim(-0.02, 1.05)
     ax_c.grid(True, linestyle=":", alpha=0.6)
