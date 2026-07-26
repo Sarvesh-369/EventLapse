@@ -145,7 +145,6 @@ def main():
     # -------------------------------------------------------------
     # TABLE 1: 3-Part Trace-Grounded Evaluation Table
     # -------------------------------------------------------------
-    # Part A: By Task
     tasks = [("Bounce Ball", "bounce_ball"), ("Blinking", "blinking"), ("State Machine", "state_machine")]
     part_a_rows = []
     for label, domain in tasks:
@@ -156,7 +155,6 @@ def main():
     m_macro = compute_metrics(baseline_records, root_dir)
     part_a_rows.append(f"  \\textbf{{Macro Average}}        & \\textbf{{{m_macro['acc']:5.1f}\\%}} & \\textbf{{{m_macro['vor']:4.2f}}} & \\textbf{{{m_macro['p']:5.1f}\\%}} & \\textbf{{{m_macro['r']:5.1f}\\%}} & \\textbf{{{m_macro['f1']:5.1f}\\%}} & \\textbf{{{m_macro['acr']:4.1f}\\%}} & \\textbf{{{m_macro['rfr']:4.1f}\\%}} \\\\")
 
-    # Part B: Region Subsets
     regions = [
         ("Low Count, Low Freq", lambda r: r["N_count"] <= 3 and r["F_hz"] <= 2.0),
         ("High Count, Low Freq", lambda r: r["N_count"] >= 5 and r["F_hz"] <= 2.0),
@@ -169,7 +167,6 @@ def main():
         m = compute_metrics(sub, root_dir)
         part_b_rows.append(f"  {label:<24} & {m['acc']:5.1f}\\% & {m['vor']:4.2f} & {m['p']:5.1f}\\% & {m['r']:5.1f}\\% & {m['f1']:5.1f}\\% & {m['acr']:4.1f}\\% & {m['rfr']:4.1f}\\% \\\\")
 
-    # Part C: Bounce Ball Interventions
     interventions_files = [
         ("Native + Structured (Baseline)", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl"),
         ("Dense Sampling (4 FPS)", "results_matrix_gemini_gemini-3.6-flash_frames_4fps_structured_trace.jsonl"),
@@ -224,7 +221,7 @@ def main():
     print(f"Saved {tab1_path}")
 
     # -------------------------------------------------------------
-    # FIGURE 3: Heatmaps (X-axis: Event Count N, Y-axis: Frequency F)
+    # FIGURE 3: Baseline N x F Heatmaps (X-axis: N, Y-axis: F)
     # -------------------------------------------------------------
     df_base = pd.DataFrame(baseline_records)
     fig, axes = plt.subplots(1, 3, figsize=(18, 5.5), dpi=300)
@@ -268,11 +265,11 @@ def main():
     print(f"Saved {fig_3_path}")
 
     # -------------------------------------------------------------
-    # FIGURE 4: Intervention Analysis Line Plots vs N x F (Panels A, B, C)
+    # FIGURE 4: Intervention Analysis Line Plots (Panels A, B, C)
     # -------------------------------------------------------------
     fig, (ax_a, ax_b, ax_c) = plt.subplots(1, 3, figsize=(18, 5), dpi=300)
 
-    # Panel A: Visual Sampling Densities vs N x F
+    # Panel A: Visual Sampling Densities vs N
     fps_modes = [("1 FPS", "frames_1fps"), ("2 FPS", "frames_2fps"), ("4 FPS", "frames_4fps"), ("8 FPS", "frames_8fps"), ("16 FPS", "frames_16fps")]
     colors_fps = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
 
@@ -285,23 +282,23 @@ def main():
                     if line.strip():
                         r = json.loads(line)
                         if r.get("task") == "bounce_ball" and r.get("exact_match_result") is not None:
-                            n, freq = parse_n_and_f(r["sample_id"])
-                            r["NxF"] = round(n * freq, 2)
+                            n, _ = parse_n_and_f(r["sample_id"])
+                            r["N_count"] = n
                             recs.append(r)
             if recs:
                 df_fps = pd.DataFrame(recs)
-                nxf_grouped = df_fps.groupby("NxF")["exact_match_result"].mean()
-                ax_a.plot(nxf_grouped.index, nxf_grouped.values, marker="o", label=label, color=color, linewidth=2, markersize=4)
+                n_grouped = df_fps.groupby("N_count")["exact_match_result"].mean()
+                ax_a.plot(n_grouped.index, n_grouped.values, marker="o", label=label, color=color, linewidth=2)
 
     ax_a.axhline(0.80, color="red", linestyle="--", alpha=0.7, label="τ = 0.80")
     ax_a.set_title("A. Visual Sampling Densities", fontsize=12, fontweight="bold")
-    ax_a.set_xlabel("Event Complexity (N × F)", fontsize=11, fontweight="bold")
+    ax_a.set_xlabel("Event Count N", fontsize=11, fontweight="bold")
     ax_a.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
     ax_a.set_ylim(-0.02, 1.05)
     ax_a.grid(True, linestyle=":", alpha=0.6)
     ax_a.legend(fontsize=9, loc="upper right")
 
-    # Panel B: Keyframe Evidence vs Native vs 16 FPS vs N x F
+    # Panel B: Keyframe Evidence vs Native vs 16 FPS vs N
     panel_b_modes = [("Native Video", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl", "#1f77b4"),
                      ("16 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_16fps_structured_trace.jsonl", "#9467bd"),
                      ("Keyframe", "results_matrix_gemini_gemini-3.6-flash_oracle_evidence_structured_trace.jsonl", "#e63946")]
@@ -315,23 +312,23 @@ def main():
                     if line.strip():
                         r = json.loads(line)
                         if r.get("task") == "bounce_ball" and r.get("exact_match_result") is not None:
-                            n, freq = parse_n_and_f(r["sample_id"])
-                            r["NxF"] = round(n * freq, 2)
+                            n, _ = parse_n_and_f(r["sample_id"])
+                            r["N_count"] = n
                             recs.append(r)
             if recs:
                 df_b = pd.DataFrame(recs)
-                nxf_grouped = df_b.groupby("NxF")["exact_match_result"].mean()
-                ax_b.plot(nxf_grouped.index, nxf_grouped.values, marker="s" if label == "Keyframe" else "o", label=label, color=color, linewidth=2.2, markersize=4)
+                n_grouped = df_b.groupby("N_count")["exact_match_result"].mean()
+                ax_b.plot(n_grouped.index, n_grouped.values, marker="s" if label == "Keyframe" else "o", label=label, color=color, linewidth=2.2)
 
     ax_b.axhline(0.80, color="red", linestyle="--", alpha=0.7, label="τ = 0.80")
     ax_b.set_title("B. Keyframe Evidence vs Native & 16 FPS", fontsize=12, fontweight="bold")
-    ax_b.set_xlabel("Event Complexity (N × F)", fontsize=11, fontweight="bold")
+    ax_b.set_xlabel("Event Count N", fontsize=11, fontweight="bold")
     ax_b.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
     ax_b.set_ylim(-0.02, 1.05)
     ax_b.grid(True, linestyle=":", alpha=0.6)
     ax_b.legend(fontsize=9, loc="upper right")
 
-    # Panel C: Prompting Strategies Line Plot vs N x F
+    # Panel C: Prompting Strategies Line Plot vs N
     prompt_strats = [("Direct", "results_matrix_gemini_gemini-3.6-flash_native_video_direct.jsonl", "#1f77b4"),
                      ("Structured Trace", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl", "#2ca02c"),
                      ("Multi-Turn Verification", "results_matrix_gemini_gemini-3.6-flash_native_video_multi_turn_verification.jsonl", "#d62728"),
@@ -347,17 +344,17 @@ def main():
                     if line.strip():
                         r = json.loads(line)
                         if r.get("task") == "bounce_ball" and r.get("exact_match_result") is not None:
-                            n, freq = parse_n_and_f(r["sample_id"])
-                            r["NxF"] = round(n * freq, 2)
+                            n, _ = parse_n_and_f(r["sample_id"])
+                            r["N_count"] = n
                             recs.append(r)
             if recs:
                 df_c = pd.DataFrame(recs)
-                nxf_grouped = df_c.groupby("NxF")["exact_match_result"].mean()
-                ax_c.plot(nxf_grouped.index, nxf_grouped.values, marker="o", label=label, color=color, linewidth=2, markersize=4)
+                n_grouped = df_c.groupby("N_count")["exact_match_result"].mean()
+                ax_c.plot(n_grouped.index, n_grouped.values, marker="o", label=label, color=color, linewidth=2)
 
     ax_c.axhline(0.80, color="red", linestyle="--", alpha=0.7, label="τ = 0.80")
     ax_c.set_title("C. Prompting & Reasoning Formats", fontsize=12, fontweight="bold")
-    ax_c.set_xlabel("Event Complexity (N × F)", fontsize=11, fontweight="bold")
+    ax_c.set_xlabel("Event Count N", fontsize=11, fontweight="bold")
     ax_c.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
     ax_c.set_ylim(-0.02, 1.05)
     ax_c.grid(True, linestyle=":", alpha=0.6)
@@ -369,7 +366,71 @@ def main():
     plt.close()
     print(f"Saved {fig_4_path}")
 
-    # Copy ONLY the required generated files to AAAI_27 directory
+    # -------------------------------------------------------------
+    # FIGURE 4 HEATMAPS: N x F Heatmaps for Interventions (fig_4_heatmaps.png)
+    # -------------------------------------------------------------
+    heatmap_interventions = [
+        ("Sampling: 2 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_2fps_structured_trace.jsonl"),
+        ("Sampling: 4 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_4fps_structured_trace.jsonl"),
+        ("Sampling: 8 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_8fps_structured_trace.jsonl"),
+        ("Sampling: 16 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_16fps_structured_trace.jsonl"),
+        ("Keyframe Evidence", "results_matrix_gemini_gemini-3.6-flash_oracle_evidence_structured_trace.jsonl"),
+        ("Prompt: Direct", "results_matrix_gemini_gemini-3.6-flash_native_video_direct.jsonl"),
+        ("Prompt: Multi-Turn", "results_matrix_gemini_gemini-3.6-flash_native_video_multi_turn_verification.jsonl"),
+        ("Prompt: Thinking", "results_matrix_gemini_gemini-3.6-flash_native_video_thinking.jsonl"),
+    ]
+
+    fig_h, axes_h = plt.subplots(2, 4, figsize=(22, 10), dpi=300)
+    axes_h_flat = axes_h.flatten()
+
+    for idx, (title, fname) in enumerate(heatmap_interventions):
+        fpath = outputs_dir / fname
+        recs = []
+        if fpath.exists():
+            with open(fpath) as f:
+                for line in f:
+                    if line.strip():
+                        r = json.loads(line)
+                        if r.get("task") == "bounce_ball" and r.get("exact_match_result") is not None:
+                            n, freq = parse_n_and_f(r["sample_id"])
+                            r["N_count"] = n
+                            r["F_hz"] = freq
+                            recs.append(r)
+        if recs:
+            df_h = pd.DataFrame(recs)
+            pivot_h = df_h.pivot_table(
+                index="F_hz",
+                columns="N_count",
+                values="exact_match_result",
+                aggfunc="mean"
+            )
+            if 0 in pivot_h.columns:
+                n0_mean = pivot_h[0].dropna().mean()
+                if not np.isnan(n0_mean):
+                    pivot_h[0] = pivot_h[0].fillna(n0_mean)
+
+            sns.heatmap(
+                pivot_h,
+                annot=True,
+                fmt=".2f",
+                cmap="YlGnBu",
+                ax=axes_h_flat[idx],
+                vmin=0.0,
+                vmax=1.0,
+                cbar=(idx == 7),
+                cbar_kws={"label": "Final Answer Accuracy"} if idx == 7 else None
+            )
+            axes_h_flat[idx].set_title(title, fontsize=13, fontweight="bold", pad=8)
+            axes_h_flat[idx].set_xlabel("Event Count N", fontsize=10, fontweight="bold")
+            axes_h_flat[idx].set_ylabel("Event Frequency F (Hz)", fontsize=10, fontweight="bold")
+
+    plt.tight_layout()
+    fig_4_heatmaps_path = paper_dir / "fig_4_heatmaps.png"
+    plt.savefig(fig_4_heatmaps_path, dpi=300, bbox_inches="tight")
+    plt.close()
+    print(f"Saved {fig_4_heatmaps_path}")
+
+    # Copy generated files to AAAI_27 directory
     aaai_figs = root_dir.parent / "morse papers/morse_profile/AAAI_27/figs"
     aaai_tabs = root_dir.parent / "morse papers/morse_profile/AAAI_27/tables-tex"
     if aaai_figs.exists():
@@ -377,7 +438,7 @@ def main():
     if aaai_tabs.exists():
         os.system(f"cp {paper_dir}/*.tex '{aaai_tabs}/'")
 
-    print("\n=== Clean Generation Complete: Saved 3 Figures and 1 Table to outputs/paper/ and synced to AAAI_27! ===")
+    print("\n=== Generation Complete: Saved Figures and Table to outputs/paper/ and synced to AAAI_27! ===")
 
 if __name__ == "__main__":
     main()
