@@ -224,7 +224,7 @@ def main():
     print(f"Saved {tab1_path}")
 
     # -------------------------------------------------------------
-    # FIGURE 3: N x F Heatmaps across Baseline Domains
+    # FIGURE 3: N x F Heatmaps across Baseline Domains (Light Red to Blue Palette)
     # -------------------------------------------------------------
     df_base = pd.DataFrame(baseline_records)
     fig, axes = plt.subplots(1, 3, figsize=(18, 5.5), dpi=300)
@@ -247,11 +247,12 @@ def main():
                 if not np.isnan(n0_mean):
                     pivot.loc[0] = pivot.loc[0].fillna(n0_mean)
 
+            # Using RdBu_r for light red (0.0) -> light yellow/white (0.5) -> soft blue (1.0)
             sns.heatmap(
                 pivot,
                 annot=True,
                 fmt=".2f",
-                cmap="mako_r",
+                cmap="RdBu",
                 ax=axes[idx],
                 vmin=0.0,
                 vmax=1.0,
