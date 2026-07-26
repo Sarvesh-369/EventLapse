@@ -224,7 +224,7 @@ def main():
     print(f"Saved {tab1_path}")
 
     # -------------------------------------------------------------
-    # FIGURE 3: N x F Heatmaps across Baseline Domains (Original YlGnBu Palette)
+    # FIGURE 3: Heatmaps (X-axis: Event Count N, Y-axis: Frequency F)
     # -------------------------------------------------------------
     df_base = pd.DataFrame(baseline_records)
     fig, axes = plt.subplots(1, 3, figsize=(18, 5.5), dpi=300)
@@ -235,17 +235,18 @@ def main():
     for idx, domain in enumerate(["bounce_ball", "blinking", "state_machine"]):
         sub_df = df_base[df_base["task"] == domain]
         if not sub_df.empty:
+            # Pivot with F_hz on index (Y-axis) and N_count on columns (X-axis)
             pivot = sub_df.pivot_table(
-                index="N_count",
-                columns="F_hz",
+                index="F_hz",
+                columns="N_count",
                 values="exact_match_result",
                 aggfunc="mean"
             )
-            # Fill N=0 across frequency columns if present
-            if 0 in pivot.index:
-                n0_mean = pivot.loc[0].dropna().mean()
+            # Fill N=0 column if present
+            if 0 in pivot.columns:
+                n0_mean = pivot[0].dropna().mean()
                 if not np.isnan(n0_mean):
-                    pivot.loc[0] = pivot.loc[0].fillna(n0_mean)
+                    pivot[0] = pivot[0].fillna(n0_mean)
 
             sns.heatmap(
                 pivot,
@@ -259,8 +260,8 @@ def main():
                 cbar_kws={"label": "Final Answer Accuracy"} if idx == 2 else None
             )
             axes[idx].set_title(f"{domain_labels[domain]}", fontsize=14, fontweight="bold", pad=10)
-            axes[idx].set_xlabel("Event Frequency F (Hz)", fontsize=11, fontweight="bold")
-            axes[idx].set_ylabel("Event Count N", fontsize=11, fontweight="bold")
+            axes[idx].set_xlabel("Event Count N", fontsize=11, fontweight="bold")
+            axes[idx].set_ylabel("Event Frequency F (Hz)", fontsize=11, fontweight="bold")
 
     plt.tight_layout()
     fig_3_path = paper_dir / "fig_3_n_x_f_heatmaps.png"
