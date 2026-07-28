@@ -80,20 +80,20 @@ def main():
             axes_flat[idx].set_xlabel("Event Count N", fontsize=11, fontweight="bold")
             axes_flat[idx].set_ylabel("Event Frequency F (Hz)", fontsize=11, fontweight="bold")
 
-    # Add shared colorbar spanning the full height of the figure on the right
-    fig.tight_layout(rect=[0, 0, 0.91, 1.0])
-    cbar_ax = fig.add_axes([0.925, 0.05, 0.018, 0.91])
+    # Add balanced right-side colorbar (width = 0.014)
+    fig.tight_layout(rect=[0, 0, 0.925, 1.0])
+    cbar_ax = fig.add_axes([0.938, 0.05, 0.014, 0.91])
     sm = plt.cm.ScalarMappable(cmap="YlGnBu", norm=plt.Normalize(vmin=0.0, vmax=1.0))
     sm.set_array([])
     cbar = fig.colorbar(sm, cax=cbar_ax)
-    cbar.set_label("Final Answer Accuracy", fontsize=13, fontweight="bold")
+    cbar.set_label("Final Answer Accuracy", fontsize=12.5, fontweight="bold")
 
     fig_4h_png = paper_dir / "fig_4_heatmaps.png"
     fig_4h_pdf = paper_dir / "fig_4_heatmaps.pdf"
     plt.savefig(fig_4h_png, dpi=300, bbox_inches="tight")
     plt.savefig(fig_4h_pdf, bbox_inches="tight")
     plt.close()
-    print(f"Saved equal-sized {fig_4h_png} and {fig_4h_pdf}")
+    print(f"Saved balanced colorbar {fig_4h_png} and {fig_4h_pdf}")
 
     # Copy to AAAI_27 figs if exists
     aaai_figs = root_dir.parent / "morse papers/morse_profile/AAAI_27/figs"

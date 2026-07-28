@@ -219,7 +219,7 @@ def main():
     print(f"Saved {tab1_path}")
 
     # -------------------------------------------------------------
-    # FIGURE 3: Baseline N x F Heatmaps (Equal-sized subplots with full-height right colorbar)
+    # FIGURE 3: Baseline N x F Heatmaps (Equal-sized subplots with balanced colorbar width = 0.014)
     # -------------------------------------------------------------
     df_base = pd.DataFrame(baseline_records)
     fig, axes = plt.subplots(1, 3, figsize=(17.5, 5.5), dpi=300)
@@ -255,8 +255,8 @@ def main():
             axes[idx].set_xlabel("Event Count N", fontsize=11, fontweight="bold")
             axes[idx].set_ylabel("Event Frequency F (Hz)", fontsize=11, fontweight="bold")
 
-    fig.tight_layout(rect=[0, 0, 0.91, 1.0])
-    cbar_ax = fig.add_axes([0.925, 0.12, 0.018, 0.78])
+    fig.tight_layout(rect=[0, 0, 0.925, 1.0])
+    cbar_ax = fig.add_axes([0.938, 0.12, 0.014, 0.78])
     sm = plt.cm.ScalarMappable(cmap="YlGnBu", norm=plt.Normalize(vmin=0.0, vmax=1.0))
     sm.set_array([])
     cbar = fig.colorbar(sm, cax=cbar_ax)
@@ -371,7 +371,7 @@ def main():
     print(f"Saved {fig_4_png} and {fig_4_pdf}")
 
     # -------------------------------------------------------------
-    # FIGURE 4 HEATMAPS: 12-Panel N x F Heatmaps with full-height colorbar
+    # FIGURE 4 HEATMAPS: 12-Panel N x F Heatmaps with colorbar width = 0.014
     # -------------------------------------------------------------
     os.system("python3 scripts/make_fig4_heatmaps_12panel.py")
 
@@ -389,7 +389,7 @@ def main():
         os.system(f"cp {paper_dir}/*.tex '{aaai_tabs}/'")
         print(f"Synced TeX tables to {aaai_tabs}")
 
-    print("\n=== Generation Complete: Saved ALL Equal-Sized Figures (PDF + PNG) and Tables! ===")
+    print("\n=== Generation Complete: Saved ALL Figures (PDF + PNG) with Optimal Colorbar Width! ===")
 
 if __name__ == "__main__":
     main()
