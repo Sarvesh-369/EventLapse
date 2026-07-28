@@ -219,10 +219,10 @@ def main():
     print(f"Saved {tab1_path}")
 
     # -------------------------------------------------------------
-    # FIGURE 3: Baseline N x F Heatmaps (X-axis: N, Y-axis: F) (PNG + PDF)
+    # FIGURE 3: Baseline N x F Heatmaps (Equal-sized subplots with full-height right colorbar)
     # -------------------------------------------------------------
     df_base = pd.DataFrame(baseline_records)
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5.5), dpi=300)
+    fig, axes = plt.subplots(1, 3, figsize=(17.5, 5.5), dpi=300)
     plt.rcParams["font.sans-serif"] = "DejaVu Sans"
 
     domain_labels = {"bounce_ball": "Bounce Ball", "blinking": "Blinking", "state_machine": "State Machine"}
@@ -249,20 +249,25 @@ def main():
                 ax=axes[idx],
                 vmin=0.0,
                 vmax=1.0,
-                cbar=(idx == 2),
-                cbar_kws={"label": "Final Answer Accuracy"} if idx == 2 else None
+                cbar=False
             )
             axes[idx].set_title(f"{domain_labels[domain]}", fontsize=14, fontweight="bold", pad=10)
             axes[idx].set_xlabel("Event Count N", fontsize=11, fontweight="bold")
             axes[idx].set_ylabel("Event Frequency F (Hz)", fontsize=11, fontweight="bold")
 
-    plt.tight_layout()
+    fig.tight_layout(rect=[0, 0, 0.91, 1.0])
+    cbar_ax = fig.add_axes([0.925, 0.12, 0.018, 0.78])
+    sm = plt.cm.ScalarMappable(cmap="YlGnBu", norm=plt.Normalize(vmin=0.0, vmax=1.0))
+    sm.set_array([])
+    cbar = fig.colorbar(sm, cax=cbar_ax)
+    cbar.set_label("Final Answer Accuracy", fontsize=12, fontweight="bold")
+
     fig_3_png = paper_dir / "fig_3_n_x_f_heatmaps.png"
     fig_3_pdf = paper_dir / "fig_3_n_x_f_heatmaps.pdf"
     plt.savefig(fig_3_png, dpi=300, bbox_inches="tight")
     plt.savefig(fig_3_pdf, bbox_inches="tight")
     plt.close()
-    print(f"Saved {fig_3_png} and {fig_3_pdf}")
+    print(f"Saved equal-sized {fig_3_png} and {fig_3_pdf}")
 
     # -------------------------------------------------------------
     # FIGURE 4: Intervention Analysis Line Plots (Panels A, B, C) (PNG + PDF)
@@ -366,7 +371,7 @@ def main():
     print(f"Saved {fig_4_png} and {fig_4_pdf}")
 
     # -------------------------------------------------------------
-    # FIGURE 4 HEATMAPS: 12-Panel N x F Heatmaps for Interventions (fig_4_heatmaps.png + pdf)
+    # FIGURE 4 HEATMAPS: 12-Panel N x F Heatmaps with full-height colorbar
     # -------------------------------------------------------------
     os.system("python3 scripts/make_fig4_heatmaps_12panel.py")
 
@@ -384,7 +389,7 @@ def main():
         os.system(f"cp {paper_dir}/*.tex '{aaai_tabs}/'")
         print(f"Synced TeX tables to {aaai_tabs}")
 
-    print("\n=== Generation Complete: Saved ALL Figures (PDF + PNG) and Tables to outputs/paper/ and AAAI_27! ===")
+    print("\n=== Generation Complete: Saved ALL Equal-Sized Figures (PDF + PNG) and Tables! ===")
 
 if __name__ == "__main__":
     main()

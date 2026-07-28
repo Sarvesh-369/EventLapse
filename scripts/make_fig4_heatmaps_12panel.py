@@ -15,21 +15,12 @@ def parse_n_and_f(sample_id: str):
     f_val = float(f_match.group(1)) if f_match else 0.0
     return n_val, f_val
 
-def load_gt_events(sample_id, domain, root_dir):
-    trace_path = root_dir / f"data/traces/{domain}/{sample_id}_trace.json"
-    if trace_path.exists():
-        with open(trace_path) as f:
-            data = json.load(f)
-            return [e["timestamp"] for e in data.get("events", [])]
-    return []
-
 def main():
     root_dir = Path(__file__).resolve().parent.parent
     outputs_dir = root_dir / "outputs"
     paper_dir = outputs_dir / "paper"
     paper_dir.mkdir(parents=True, exist_ok=True)
 
-    # 12 Interventions matching exact user screenshot
     heatmap_interventions = [
         ("Native Video (Baseline)", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl"),
         ("Sampling: 1 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_1fps_structured_trace.jsonl"),
@@ -45,7 +36,7 @@ def main():
         ("Prompt: Role Prompting", "results_matrix_gemini_gemini-3.6-flash_native_video_role_prompting.jsonl"),
     ]
 
-    fig, axes = plt.subplots(4, 3, figsize=(18, 19.5), dpi=300)
+    fig, axes = plt.subplots(4, 3, figsize=(17.5, 19), dpi=300)
     axes_flat = axes.flatten()
     plt.rcParams["font.sans-serif"] = "DejaVu Sans"
 
@@ -83,20 +74,26 @@ def main():
                 ax=axes_flat[idx],
                 vmin=0.0,
                 vmax=1.0,
-                cbar=(idx == 11),
-                cbar_kws={"label": "Final Answer Accuracy"} if idx == 11 else None
+                cbar=False
             )
-            axes_flat[idx].set_title(title, fontsize=14, fontweight="bold", pad=8)
+            axes_flat[idx].set_title(title, fontsize=13.5, fontweight="bold", pad=8)
             axes_flat[idx].set_xlabel("Event Count N", fontsize=11, fontweight="bold")
             axes_flat[idx].set_ylabel("Event Frequency F (Hz)", fontsize=11, fontweight="bold")
 
-    plt.tight_layout()
+    # Add shared colorbar spanning the full height of the figure on the right
+    fig.tight_layout(rect=[0, 0, 0.91, 1.0])
+    cbar_ax = fig.add_axes([0.925, 0.05, 0.018, 0.91])
+    sm = plt.cm.ScalarMappable(cmap="YlGnBu", norm=plt.Normalize(vmin=0.0, vmax=1.0))
+    sm.set_array([])
+    cbar = fig.colorbar(sm, cax=cbar_ax)
+    cbar.set_label("Final Answer Accuracy", fontsize=13, fontweight="bold")
+
     fig_4h_png = paper_dir / "fig_4_heatmaps.png"
     fig_4h_pdf = paper_dir / "fig_4_heatmaps.pdf"
     plt.savefig(fig_4h_png, dpi=300, bbox_inches="tight")
     plt.savefig(fig_4h_pdf, bbox_inches="tight")
     plt.close()
-    print(f"Saved {fig_4h_png} and {fig_4h_pdf}")
+    print(f"Saved equal-sized {fig_4h_png} and {fig_4h_pdf}")
 
     # Copy to AAAI_27 figs if exists
     aaai_figs = root_dir.parent / "morse papers/morse_profile/AAAI_27/figs"
