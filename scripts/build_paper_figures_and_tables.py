@@ -109,24 +109,22 @@ def main():
     root_dir = Path(__file__).resolve().parent.parent
     outputs_dir = root_dir / "outputs"
     paper_dir = outputs_dir / "paper"
-
-    # Clean paper_dir completely
-    if paper_dir.exists():
-        for item in paper_dir.glob("*"):
-            if item.is_file():
-                item.unlink()
     paper_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"=== Generating Required Paper Artifacts in {paper_dir} ===")
+    print(f"=== Generating Required Paper Artifacts (PDF + PNG) in {paper_dir} ===")
 
     # -------------------------------------------------------------
-    # FIGURE 1: Generate Dataset Overview Figure
+    # FIGURE 1: Generate Dataset Overview Figure (PNG + PDF)
     # -------------------------------------------------------------
     os.system("python3 scripts/make_dataset_overview_figure.py")
-    overview_fig = outputs_dir / "dataset_overview_figure.png"
-    if overview_fig.exists():
-        os.system(f"cp {overview_fig} {paper_dir}/fig_1_dataset_overview.png")
+    overview_png = outputs_dir / "dataset_overview_figure.png"
+    overview_pdf = outputs_dir / "dataset_overview_figure.pdf"
+    if overview_png.exists():
+        os.system(f"cp '{overview_png}' '{paper_dir}/fig_1_dataset_overview.png'")
         print(f"Saved {paper_dir}/fig_1_dataset_overview.png")
+    if overview_pdf.exists():
+        os.system(f"cp '{overview_pdf}' '{paper_dir}/fig_1_dataset_overview.pdf'")
+        print(f"Saved {paper_dir}/fig_1_dataset_overview.pdf")
 
     # Load baseline records for Table 1 and Figure 3
     baseline_file = outputs_dir / "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl"
@@ -221,7 +219,7 @@ def main():
     print(f"Saved {tab1_path}")
 
     # -------------------------------------------------------------
-    # FIGURE 3: Baseline N x F Heatmaps (X-axis: N, Y-axis: F)
+    # FIGURE 3: Baseline N x F Heatmaps (X-axis: N, Y-axis: F) (PNG + PDF)
     # -------------------------------------------------------------
     df_base = pd.DataFrame(baseline_records)
     fig, axes = plt.subplots(1, 3, figsize=(18, 5.5), dpi=300)
@@ -259,17 +257,18 @@ def main():
             axes[idx].set_ylabel("Event Frequency F (Hz)", fontsize=11, fontweight="bold")
 
     plt.tight_layout()
-    fig_3_path = paper_dir / "fig_3_n_x_f_heatmaps.png"
-    plt.savefig(fig_3_path, dpi=300, bbox_inches="tight")
+    fig_3_png = paper_dir / "fig_3_n_x_f_heatmaps.png"
+    fig_3_pdf = paper_dir / "fig_3_n_x_f_heatmaps.pdf"
+    plt.savefig(fig_3_png, dpi=300, bbox_inches="tight")
+    plt.savefig(fig_3_pdf, bbox_inches="tight")
     plt.close()
-    print(f"Saved {fig_3_path}")
+    print(f"Saved {fig_3_png} and {fig_3_pdf}")
 
     # -------------------------------------------------------------
-    # FIGURE 4: Intervention Analysis Line Plots (Panels A, B, C)
+    # FIGURE 4: Intervention Analysis Line Plots (Panels A, B, C) (PNG + PDF)
     # -------------------------------------------------------------
     fig, (ax_a, ax_b, ax_c) = plt.subplots(1, 3, figsize=(18, 5), dpi=300)
 
-    # Panel A: Visual Sampling Densities vs N
     fps_modes = [("1 FPS", "frames_1fps"), ("2 FPS", "frames_2fps"), ("4 FPS", "frames_4fps"), ("8 FPS", "frames_8fps"), ("16 FPS", "frames_16fps")]
     colors_fps = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
 
@@ -298,7 +297,6 @@ def main():
     ax_a.grid(True, linestyle=":", alpha=0.6)
     ax_a.legend(fontsize=9, loc="upper right")
 
-    # Panel B: Keyframe Evidence vs Native vs 16 FPS vs N
     panel_b_modes = [("Native Video", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl", "#1f77b4"),
                      ("16 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_16fps_structured_trace.jsonl", "#9467bd"),
                      ("Keyframe", "results_matrix_gemini_gemini-3.6-flash_oracle_evidence_structured_trace.jsonl", "#e63946")]
@@ -328,7 +326,6 @@ def main():
     ax_b.grid(True, linestyle=":", alpha=0.6)
     ax_b.legend(fontsize=9, loc="upper right")
 
-    # Panel C: Prompting Strategies Line Plot vs N
     prompt_strats = [("Direct", "results_matrix_gemini_gemini-3.6-flash_native_video_direct.jsonl", "#1f77b4"),
                      ("Structured Trace", "results_matrix_gemini_gemini-3.6-flash_native_video_structured_trace.jsonl", "#2ca02c"),
                      ("Multi-Turn Verification", "results_matrix_gemini_gemini-3.6-flash_native_video_multi_turn_verification.jsonl", "#d62728"),
@@ -361,13 +358,15 @@ def main():
     ax_c.legend(fontsize=9, loc="upper right")
 
     plt.tight_layout()
-    fig_4_path = paper_dir / "fig_4_intervention_analysis.png"
-    plt.savefig(fig_4_path, dpi=300, bbox_inches="tight")
+    fig_4_png = paper_dir / "fig_4_intervention_analysis.png"
+    fig_4_pdf = paper_dir / "fig_4_intervention_analysis.pdf"
+    plt.savefig(fig_4_png, dpi=300, bbox_inches="tight")
+    plt.savefig(fig_4_pdf, bbox_inches="tight")
     plt.close()
-    print(f"Saved {fig_4_path}")
+    print(f"Saved {fig_4_png} and {fig_4_pdf}")
 
     # -------------------------------------------------------------
-    # FIGURE 4 HEATMAPS: N x F Heatmaps for Interventions (fig_4_heatmaps.png)
+    # FIGURE 4 HEATMAPS: N x F Heatmaps for Interventions (fig_4_heatmaps.png + pdf)
     # -------------------------------------------------------------
     heatmap_interventions = [
         ("Sampling: 2 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_2fps_structured_trace.jsonl"),
@@ -425,20 +424,28 @@ def main():
             axes_h_flat[idx].set_ylabel("Event Frequency F (Hz)", fontsize=10, fontweight="bold")
 
     plt.tight_layout()
-    fig_4_heatmaps_path = paper_dir / "fig_4_heatmaps.png"
-    plt.savefig(fig_4_heatmaps_path, dpi=300, bbox_inches="tight")
+    fig_4h_png = paper_dir / "fig_4_heatmaps.png"
+    fig_4h_pdf = paper_dir / "fig_4_heatmaps.pdf"
+    plt.savefig(fig_4h_png, dpi=300, bbox_inches="tight")
+    plt.savefig(fig_4h_pdf, bbox_inches="tight")
     plt.close()
-    print(f"Saved {fig_4_heatmaps_path}")
+    print(f"Saved {fig_4h_png} and {fig_4h_pdf}")
+
+    # Generate Figure 5 Real-World Transfer Plot (PDF + PNG)
+    os.system("python3 scripts/make_real_world_plot.py")
 
     # Copy generated files to AAAI_27 directory
     aaai_figs = root_dir.parent / "morse papers/morse_profile/AAAI_27/figs"
     aaai_tabs = root_dir.parent / "morse papers/morse_profile/AAAI_27/tables-tex"
     if aaai_figs.exists():
         os.system(f"cp {paper_dir}/*.png '{aaai_figs}/'")
+        os.system(f"cp {paper_dir}/*.pdf '{aaai_figs}/'")
+        print(f"Synced PNG and PDF figures to {aaai_figs}")
     if aaai_tabs.exists():
         os.system(f"cp {paper_dir}/*.tex '{aaai_tabs}/'")
+        print(f"Synced TeX tables to {aaai_tabs}")
 
-    print("\n=== Generation Complete: Saved Figures and Table to outputs/paper/ and synced to AAAI_27! ===")
+    print("\n=== Generation Complete: Saved ALL Figures (PDF + PNG) and Tables to outputs/paper/ and AAAI_27! ===")
 
 if __name__ == "__main__":
     main()

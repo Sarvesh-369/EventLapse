@@ -31,7 +31,7 @@ def extract_frame_at_timestamp(video_path: Path, timestamp: float) -> np.ndarray
         tmp_path.unlink(missing_ok=True)
         return np.zeros((1080, 1920, 3), dtype=np.uint8)
 
-def build_dataset_overview_figure(output_path: Path):
+def build_dataset_overview_figure(output_png_path: Path):
     demo_dir = Path("data/figure_demo")
 
     tasks_info = [
@@ -177,10 +177,13 @@ def build_dataset_overview_figure(output_path: Path):
 
             y_pos -= line_step
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.01)
+    output_png_path.parent.mkdir(parents=True, exist_ok=True)
+    output_pdf_path = output_png_path.with_suffix(".pdf")
+
+    plt.savefig(output_png_path, dpi=300, bbox_inches="tight", facecolor="white", pad_inches=0.01)
+    plt.savefig(output_pdf_path, bbox_inches="tight", facecolor="white", pad_inches=0.01)
     plt.close()
-    print(f"Saved dataset overview figure to {output_path}")
+    print(f"Saved dataset overview figure to {output_png_path} and {output_pdf_path}")
 
 if __name__ == "__main__":
     out_file = Path("outputs/dataset_overview_figure.png")

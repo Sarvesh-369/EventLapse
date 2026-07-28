@@ -26,24 +26,10 @@ def main():
                 recs = [json.loads(line) for line in f if line.strip()]
             dfs[label] = (pd.DataFrame(recs), color, marker)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 5.5), dpi=300)
+    fig, ax = plt.subplots(figsize=(8.5, 5), dpi=300)
     plt.rcParams["font.sans-serif"] = "DejaVu Sans"
 
-    # Panel A: Discrete N (N = 1 to 15)
-    for label, (df, color, marker) in dfs.items():
-        sub_df = df[(df["gt_count"] >= 1) & (df["gt_count"] <= 15)]
-        n_grouped = sub_df.groupby("gt_count")["exact_match"].mean()
-        ax1.plot(n_grouped.index, n_grouped.values, marker=marker, label=label, color=color, linewidth=2.2, markersize=6)
-
-    ax1.set_title("A. Accuracy vs. Event Count N (RepCount Dataset, N ≤ 15)", fontsize=12, fontweight="bold")
-    ax1.set_xlabel("Ground-Truth Event Count N", fontsize=11, fontweight="bold")
-    ax1.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
-    ax1.set_ylim(-0.02, 0.70)
-    ax1.set_xticks(range(1, 16))
-    ax1.grid(True, linestyle=":", alpha=0.6)
-    ax1.legend(fontsize=10, loc="upper right")
-
-    # Panel B: Binned Ranges
+    # Panel B alone: Binned Ranges
     bins = [(1,2), (3,4), (5,6), (7,8), (9,10), (11,15), (16,20), (21,30), (31,100)]
     bin_labels = ["1-2", "3-4", "5-6", "7-8", "9-10", "11-15", "16-20", "21-30", ">30"]
 
@@ -53,32 +39,38 @@ def main():
             sub = df[(df["gt_count"] >= low) & (df["gt_count"] <= high)]
             acc = sub["exact_match"].mean() if len(sub) > 0 else 0.0
             b_accs.append(acc)
-        ax2.plot(bin_labels, b_accs, marker=marker, label=label, color=color, linewidth=2.2, markersize=6)
+        ax.plot(bin_labels, b_accs, marker=marker, label=label, color=color, linewidth=2.2, markersize=7)
 
-    ax2.set_title("B. Accuracy vs. Event Count Bins (Real-World RepCount Transfer)", fontsize=12, fontweight="bold")
-    ax2.set_xlabel("Event Count Bins (N)", fontsize=11, fontweight="bold")
-    ax2.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
-    ax2.set_ylim(-0.02, 0.70)
-    ax2.grid(True, linestyle=":", alpha=0.6)
-    ax2.legend(fontsize=10, loc="upper right")
+    ax.set_title("Real-World Transfer Performance (RepCount Dataset)", fontsize=13, fontweight="bold", pad=10)
+    ax.set_xlabel("Event Count Bins (N)", fontsize=11, fontweight="bold")
+    ax.set_ylabel("Final Answer Accuracy", fontsize=11, fontweight="bold")
+    ax.set_ylim(-0.02, 0.70)
+    ax.grid(True, linestyle=":", alpha=0.6)
+    ax.legend(fontsize=10.5, loc="upper right")
 
     plt.tight_layout()
     
-    # Save output to both real world results and paper folder
-    out1 = real_world_dir / "fig_5_real_world_transfer.png"
-    out2 = paper_dir / "fig_5_real_world_transfer.png"
-    plt.savefig(out1, dpi=300, bbox_inches="tight")
-    plt.savefig(out2, dpi=300, bbox_inches="tight")
+    # Save PDF and PNG
+    out_pdf = paper_dir / "fig_5_real_world_transfer.pdf"
+    out_png = paper_dir / "fig_5_real_world_transfer.png"
+    out_rw_pdf = real_world_dir / "fig_5_real_world_transfer.pdf"
+    out_rw_png = real_world_dir / "fig_5_real_world_transfer.png"
+
+    plt.savefig(out_pdf, bbox_inches="tight")
+    plt.savefig(out_png, dpi=300, bbox_inches="tight")
+    plt.savefig(out_rw_pdf, bbox_inches="tight")
+    plt.savefig(out_rw_png, dpi=300, bbox_inches="tight")
     plt.close()
 
-    print(f"Saved {out1}")
-    print(f"Saved {out2}")
+    print(f"Saved {out_pdf}")
+    print(f"Saved {out_png}")
 
     # Copy to AAAI_27 figs if exists
     aaai_figs = root_dir.parent / "morse papers/morse_profile/AAAI_27/figs"
     if aaai_figs.exists():
-        os.system(f"cp '{out2}' '{aaai_figs}/'")
-        print(f"Synced {out2} to AAAI_27/figs")
+        os.system(f"cp '{out_pdf}' '{aaai_figs}/'")
+        os.system(f"cp '{out_png}' '{aaai_figs}/'")
+        print(f"Synced {out_pdf.name} to AAAI_27/figs")
 
 if __name__ == "__main__":
     main()
