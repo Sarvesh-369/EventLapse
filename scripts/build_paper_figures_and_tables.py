@@ -366,70 +366,9 @@ def main():
     print(f"Saved {fig_4_png} and {fig_4_pdf}")
 
     # -------------------------------------------------------------
-    # FIGURE 4 HEATMAPS: N x F Heatmaps for Interventions (fig_4_heatmaps.png + pdf)
+    # FIGURE 4 HEATMAPS: 12-Panel N x F Heatmaps for Interventions (fig_4_heatmaps.png + pdf)
     # -------------------------------------------------------------
-    heatmap_interventions = [
-        ("Sampling: 2 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_2fps_structured_trace.jsonl"),
-        ("Sampling: 4 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_4fps_structured_trace.jsonl"),
-        ("Sampling: 8 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_8fps_structured_trace.jsonl"),
-        ("Sampling: 16 FPS", "results_matrix_gemini_gemini-3.6-flash_frames_16fps_structured_trace.jsonl"),
-        ("Keyframe Evidence", "results_matrix_gemini_gemini-3.6-flash_oracle_evidence_structured_trace.jsonl"),
-        ("Prompt: Direct", "results_matrix_gemini_gemini-3.6-flash_native_video_direct.jsonl"),
-        ("Prompt: Multi-Turn", "results_matrix_gemini_gemini-3.6-flash_native_video_multi_turn_verification.jsonl"),
-        ("Prompt: Thinking", "results_matrix_gemini_gemini-3.6-flash_native_video_thinking.jsonl"),
-    ]
-
-    fig_h, axes_h = plt.subplots(2, 4, figsize=(22, 10), dpi=300)
-    axes_h_flat = axes_h.flatten()
-
-    for idx, (title, fname) in enumerate(heatmap_interventions):
-        fpath = outputs_dir / fname
-        recs = []
-        if fpath.exists():
-            with open(fpath) as f:
-                for line in f:
-                    if line.strip():
-                        r = json.loads(line)
-                        if r.get("task") == "bounce_ball" and r.get("exact_match_result") is not None:
-                            n, freq = parse_n_and_f(r["sample_id"])
-                            r["N_count"] = n
-                            r["F_hz"] = freq
-                            recs.append(r)
-        if recs:
-            df_h = pd.DataFrame(recs)
-            pivot_h = df_h.pivot_table(
-                index="F_hz",
-                columns="N_count",
-                values="exact_match_result",
-                aggfunc="mean"
-            )
-            if 0 in pivot_h.columns:
-                n0_mean = pivot_h[0].dropna().mean()
-                if not np.isnan(n0_mean):
-                    pivot_h[0] = pivot_h[0].fillna(n0_mean)
-
-            sns.heatmap(
-                pivot_h,
-                annot=True,
-                fmt=".2f",
-                cmap="YlGnBu",
-                ax=axes_h_flat[idx],
-                vmin=0.0,
-                vmax=1.0,
-                cbar=(idx == 7),
-                cbar_kws={"label": "Final Answer Accuracy"} if idx == 7 else None
-            )
-            axes_h_flat[idx].set_title(title, fontsize=13, fontweight="bold", pad=8)
-            axes_h_flat[idx].set_xlabel("Event Count N", fontsize=10, fontweight="bold")
-            axes_h_flat[idx].set_ylabel("Event Frequency F (Hz)", fontsize=10, fontweight="bold")
-
-    plt.tight_layout()
-    fig_4h_png = paper_dir / "fig_4_heatmaps.png"
-    fig_4h_pdf = paper_dir / "fig_4_heatmaps.pdf"
-    plt.savefig(fig_4h_png, dpi=300, bbox_inches="tight")
-    plt.savefig(fig_4h_pdf, bbox_inches="tight")
-    plt.close()
-    print(f"Saved {fig_4h_png} and {fig_4h_pdf}")
+    os.system("python3 scripts/make_fig4_heatmaps_12panel.py")
 
     # Generate Figure 5 Real-World Transfer Plot (PDF + PNG)
     os.system("python3 scripts/make_real_world_plot.py")
