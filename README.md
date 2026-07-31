@@ -13,8 +13,8 @@ A research framework for profiling and diagnosing the temporal reasoning capabil
 ### 1. Clone & Install
 
 ```bash
-git clone <repository_url>
-cd repository
+git clone https://github.com/Sarvesh-369/The_Low_Frequency_Trap.git
+cd The_Low_Frequency_Trap
 pip install -e .
 ```
 
