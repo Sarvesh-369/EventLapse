@@ -76,15 +76,3 @@ Set API keys for the providers you intend to evaluate:
     ├── evaluation/        # Exact match, Trace F1, Wilson 95% CIs, MORSE evaluator
     └── utils/             # Logging, caching, seeds, paths, cost calculator
 ```
-
----
-
-## 📄 Citation
-
-```bibtex
-@article{lowfrequencytrap2026,
-  title={The Low-Frequency Trap: Video--Language Models Fail at Simple Event Bookkeeping},
-  author={},
-  year={2026}
-}
-```
