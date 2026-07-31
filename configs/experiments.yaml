@@ -1,16 +1,13 @@
-# EventLapse Experiments Configuration
-reliability_threshold_tau: 0.80
-confidence_interval: 0.95
+# EventLapse Experiment Pipeline Configuration
 
-# 1. Full Event-Count x Event-Frequency Grid Sweep
-expt_1_event_count_x_frequency_grid:
+# 1. Baseline Full N x F Matrix Capability Boundary Sweep
+expt_1_matrix_sweep:
   enabled: true
-  domains: [bounce_ball, blinking, state_machine]
-  count_grid: [0, 1, 2, 3, 4, 5, 6, 8, 10, 12]
-  frequency_grid: [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
-  metrics: [exact_match, valid_output_rate, boundary_estimate]
+  schema_mode: structured_trace
+  input_mode: native_video
+  prompt_condition: structured_trace
 
-# 2. Frame Sampling Density Interventions (Native Video, 2 FPS, 8 FPS, 16 FPS)
+# 2. Frame Sampling Density Interventions
 expt_2_frame_density_interventions:
   enabled: true
   input_modes: [native_video, frames_2fps, frames_8fps, frames_16fps]
@@ -34,12 +31,11 @@ expt_5_trace_diagnosis:
   enabled: true
   schema_mode: structured_trace
   error_categories:
+    - correct
     - missed_event
     - hallucinated_event
     - merged_events
-    - duplicated_event
-    - misordered_event
-    - wrong_timestamp
-    - incorrectly_accumulated_event
+    - temporally_displaced_event
+    - misidentified_event
     - correct_trace_wrong_final_answer
     - incorrect_trace_accidental_correct

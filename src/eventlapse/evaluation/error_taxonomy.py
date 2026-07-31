@@ -1,22 +1,12 @@
 from typing import Dict, Any, List
 
 ERROR_TAXONOMY_CATEGORIES = [
+    "correct",
     "missed_event",
     "hallucinated_event",
     "merged_events",
-    "duplicated_event",
-    "misordered_event",
-    "wrong_timestamp",
-    "wrong_onset",
-    "wrong_offset",
-    "wrong_duration_comparison",
-    "missing_causal_edge",
-    "hallucinated_causal_edge",
-    "wrong_root_cause",
-    "wrong_rule",
-    "correct_rule_wrong_rollout",
-    "off_by_one_prediction",
-    "lost_object_identity",
+    "temporally_displaced_event",
+    "misidentified_event",
     "correct_trace_wrong_final_answer",
     "incorrect_trace_accidental_correct"
 ]
