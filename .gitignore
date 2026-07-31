@@ -4,11 +4,13 @@
 *.log
 screenlog.*
 
-# Data, Outputs, and Rendered Qualitative Artifacts (Do not push heavy media/outputs to git)
+# Data, Outputs, Rendered Qualitative Artifacts, Scripts, and Tests (Do not push to github)
 data/
 outputs/
 qualitative_examples/
 manim_output/
+scripts/
+tests/
 *.mp4
 *.png
 *.jpg

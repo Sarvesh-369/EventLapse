@@ -47,105 +47,6 @@ Set API keys for the providers you intend to evaluate:
 
 ---
 
-## 🛠️ Step-by-Step Data Generation & Evaluation Workflow
-
-### Step 1: Generate Synthetic Video Dataset & Ground-Truth Traces
-
-To generate synthetic MP4 video files and exact executable ground-truth traces:
-
-```bash
-# Generate complete benchmark dataset (20 seeds per cell across all 3 domains)
-python3 scripts/generate_dataset.py --num-seeds 20 --tasks all
-
-# Quick sample generation for testing (2 seeds per cell)
-python3 scripts/generate_dataset.py --num-seeds 2 --tasks all
-```
-
-This populates:
-- `data/videos/{domain}/` — Rendered `.mp4` video files
-- `data/traces/{domain}/` — Ground-truth executable JSON traces
-- `data/gt/{domain}/` — Ground-truth integer answer files
-- `data/manifest.jsonl` — Dataset index manifest
-
----
-
-### Step 2: Run Benchmark Experiments
-
-Run all 5 paper experiments for any model using the master script or individual experiment execution commands:
-
-```bash
-# Option A: Master Script (Runs Exp 1–5 sequentially for Gemini 2.0 Flash)
-./scripts/run_all_experiments.sh google gemini-2.0-flash
-
-# Option B: Run Individual Experiments
-# Exp 1: Baseline N x F Matrix Sweep
-python3 scripts/run_matrix_sweep.py --provider google --model-name gemini-2.0-flash --input-mode native_video --prompt-condition structured_trace
-
-# Exp 2: Frame Sampling Density Interventions (Native, 1, 2, 4, 8, 10, 16 FPS)
-for mode in native_video frames_1fps frames_2fps frames_4fps frames_8fps frames_10fps frames_16fps; do
-  python3 scripts/run_matrix_sweep.py --provider google --model-name gemini-2.0-flash --input-mode ${mode} --prompt-condition structured_trace
-done
-
-# Exp 3: Oracle Keyframe Evidence Interventions
-python3 scripts/run_matrix_sweep.py --provider google --model-name gemini-2.0-flash --input-mode oracle_evidence --prompt-condition structured_trace
-
-# Exp 4: Prompting Strategy Interventions (5 conditions)
-for cond in direct structured_trace multi_turn_verification thinking role_prompting; do
-  python3 scripts/run_matrix_sweep.py --provider google --model-name gemini-2.0-flash --input-mode native_video --prompt-condition ${cond}
-done
-```
-
-Model prediction JSONL logs are stored in `outputs/`.
-
----
-
-### Step 3: Compute Evaluation Metrics & Generate Paper Artifacts
-
-Compute Exact Match, Trace Precision, Recall, Trace $F_1$, Accidental Correctness Rate (ACR), and Reasoning Failure Rate (RFR):
-
-```bash
-# Evaluate metrics across raw outputs
-python3 scripts/evaluate_paper_metrics.py
-
-# Aggregate results and build paper heatmap figures & LaTeX tables
-python3 scripts/build_paper_figures_and_tables.py
-```
-
-Paper figures and tables are output to `figures/` and `outputs/paper/`.
-
----
-
-### Step 4: Extract Qualitative Samples & Render Figure Panels
-
-To extract qualitative model traces, build the interactive HTML dashboard, and render 3–2 split PDF figure panels for appendix inclusion:
-
-```bash
-# 1. Sample 30 qualitative cases across the 6 taxonomy categories
-python3 scripts/qualitative/build_qualitative_dataset.py
-
-# 2. Build interactive HTML dashboard
-python3 scripts/qualitative/generate_qualitative_html.py
-
-# 3. Render page-optimized 3-2 split PDF figure panels
-python3 scripts/qualitative/render_split_qualitative_figures.py
-```
-
----
-
-## 🖥️ Evaluating Open-Source Models via vLLM
-
-To evaluate local open-weight vision-language models:
-
-```bash
-# 1. Launch local vLLM server
-vllm serve Qwen/Qwen2-VL-7B-Instruct --port 8000
-
-# 2. Execute matrix sweep against local vLLM endpoint
-./scripts/run_all_experiments.sh vllm Qwen/Qwen2-VL-7B-Instruct
-```
-
----
-
 ## 📏 Evaluation Metrics Reference
 
 | Metric | Definition & Formula |
@@ -165,35 +66,17 @@ vllm serve Qwen/Qwen2-VL-7B-Instruct --port 8000
 ```
 EventLapse/
 ├── configs/               # Model, generation, task, and experiment YAML configs
-├── scripts/               # Master execution & evaluation scripts
-│   ├── run_all_experiments.sh # Master script to run all 5 experiments
-│   ├── run_matrix_sweep.py    # N x F matrix sweep execution engine
-│   ├── generate_dataset.py    # Manim Event Counting video dataset generator
-│   ├── evaluate_paper_metrics.py
-│   ├── build_paper_figures_and_tables.py
-│   └── qualitative/           # Qualitative dataset extraction & 3-2 split PDF renderer
-├── src/eventlapse/        # Core Python package
-│   ├── generation/        # Manim video generators (bounce_ball, blinking, state_machine)
-│   ├── models/            # VLM adapters (gemini, openai, anthropic, vllm, propensity)
-│   ├── inference/         # Prompts (5 strategies), runner, and response parsers
-│   ├── interventions/     # Temporal frame density, keyframe evidence, prompt controls
-│   ├── evaluation/        # Exact match, Trace F1, Wilson 95% CIs, MORSE evaluator
-│   └── utils/             # Logging, caching, seeds, paths, cost calculator
-├── reference_code/        # Reference evaluation routines
-└── tests/                 # Pytest unit test suite (15/15 tests passing)
+├── pyproject.toml         # Python package setup
+├── EXPERIMENTS.md         # Full specification of 5 paper experiments
+├── README.md              # Main repository documentation
+└── src/eventlapse/        # Core Python package
+    ├── generation/        # Manim video generators (bounce_ball, blinking, state_machine)
+    ├── models/            # VLM adapters (gemini, openai, anthropic, vllm, propensity)
+    ├── inference/         # Prompts (5 strategies), runner, and response parsers
+    ├── interventions/     # Temporal frame density, keyframe evidence, prompt controls
+    ├── evaluation/        # Exact match, Trace F1, Wilson 95% CIs, MORSE evaluator
+    └── utils/             # Logging, caching, seeds, paths, cost calculator
 ```
-
----
-
-## 🧪 Unit Tests
-
-Run the unit test suite to verify pipeline integrity:
-
-```bash
-PYTHONPATH=src pytest tests/
-```
-
-All 15 unit tests pass cleanly.
 
 ---
 
