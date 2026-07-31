@@ -1,8 +1,8 @@
-# EventLapse: The Low-Frequency Trap: Video–Language Models Fail at Simple Event Bookkeeping
+# The Low-Frequency Trap: Video–Language Models Fail at Simple Event Bookkeeping
 
 > **Paper Title:** *The Low-Frequency Trap: Video–Language Models Fail at Simple Event Bookkeeping*
 
-EventLapse is a research framework for profiling and diagnosing the temporal reasoning capabilities of frontier Video-Language Models (VLMs) on **Event Counting** across **3 synthetic video domains** rendered with Manim Community Edition, using the **MORSE** executable trace evaluation methodology with Trace Precision / Recall / F1 scoring and operational capability boundary estimation.
+A research framework for profiling and diagnosing the temporal reasoning capabilities of frontier Video-Language Models (VLMs) on **Event Counting** across **3 synthetic video domains** rendered with Manim Community Edition, using the **MORSE** executable trace evaluation methodology with Trace Precision / Recall / F1 scoring and operational capability boundary estimation.
 
 > 📖 **Detailed Experiments Guide:** See [EXPERIMENTS.md](EXPERIMENTS.md) for full technical details on each of the 5 paper experiments.
 
@@ -13,8 +13,8 @@ EventLapse is a research framework for profiling and diagnosing the temporal rea
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/Sarvesh-369/EventLapse.git
-cd EventLapse
+git clone <repository_url>
+cd repository
 pip install -e .
 ```
 
@@ -63,7 +63,7 @@ Set API keys for the providers you intend to evaluate:
 ## 📁 Repository Structure
 
 ```
-EventLapse/
+.
 ├── configs/               # Model, generation, task, and experiment YAML configs
 ├── pyproject.toml         # Python package setup
 ├── EXPERIMENTS.md         # Full specification of 5 paper experiments
@@ -82,7 +82,7 @@ EventLapse/
 ## 📄 Citation
 
 ```bibtex
-@article{eventlapse2026,
+@article{lowfrequencytrap2026,
   title={The Low-Frequency Trap: Video--Language Models Fail at Simple Event Bookkeeping},
   author={},
   year={2026}

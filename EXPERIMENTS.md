@@ -1,6 +1,6 @@
-# EventLapse: Synthetic Event-Counting Experiments ($N \times F$)
+# Synthetic Event-Counting Experiments ($N \times F$)
 
-This document details the 5 core synthetic event-counting experiments executed in EventLapse across **Bouncing Ball** (`bounce_ball`), **Blinking** (`blinking`), and **State Transition** (`state_machine`).
+This document details the 5 core synthetic event-counting experiments executed across **Bouncing Ball** (`bounce_ball`), **Blinking** (`blinking`), and **State Transition** (`state_machine`).
 
 ---
 
