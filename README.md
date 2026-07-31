@@ -1,7 +1,6 @@
 # EventLapse: The Low-Frequency Trap: Video–Language Models Fail at Simple Event Bookkeeping
 
 > **Paper Title:** *The Low-Frequency Trap: Video–Language Models Fail at Simple Event Bookkeeping*
-> **AAAI 2027 Submission Code Package**
 
 EventLapse is a research framework for profiling and diagnosing the temporal reasoning capabilities of frontier Video-Language Models (VLMs) on **Event Counting** across **3 synthetic video domains** rendered with Manim Community Edition, using the **MORSE** executable trace evaluation methodology with Trace Precision / Recall / F1 scoring and operational capability boundary estimation.
 
