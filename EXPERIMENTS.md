@@ -84,7 +84,7 @@ This document details the 5 core synthetic event-counting experiments executed i
 ## Experiment 5: MORSE Trace Diagnosis & Error Taxonomy
 
 - **Research Motivation**: Audit intermediate model reasoning traces against executable ground-truth traces to pinpoint exact failure modes and measure accidental correctness.
-- **Protocol**: Evaluates Trace Precision ($P$), Trace Recall ($R$), Trace F1 ($F_1$), Accidental Correctness Rate (ACR), Reasoning Failure Rate (RFR), and 18 failure categories (`missed_event`, `hallucinated_event`, `merged_events`, `duplicated_event`, `misordered_event`, `wrong_timestamp`, `incorrectly_accumulated_event`).
+- **Protocol**: Evaluates Trace Precision ($P$), Trace Recall ($R$), Trace F1 ($F_1$), Accidental Correctness Rate (ACR), Reasoning Failure Rate (RFR), and the official paper error taxonomy categories (`correct`, `missed_event`, `hallucinated_event`, `merged_events`, `temporally_displaced_event`, `misidentified_event`, `correct_trace_wrong_final_answer`, `incorrect_trace_accidental_correct`).
 - **Visual Domains**: `bounce_ball`, `blinking`, `state_machine`
 - **Execution Command**:
   ```bash
