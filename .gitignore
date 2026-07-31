@@ -4,14 +4,16 @@
 *.log
 screenlog.*
 
-# Data and Outputs (Do not push to git)
+# Data, Outputs, and Rendered Qualitative Artifacts (Do not push heavy media/outputs to git)
 data/
 outputs/
+qualitative_examples/
 manim_output/
 *.mp4
 *.png
 *.jpg
 *.jpeg
+*.pdf
 
 # Python build & caches
 __pycache__/

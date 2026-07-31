@@ -1,10 +1,11 @@
 # EventLapse: Where Do Frontier Video LLMs Break? Trace-Grounded Profiling of Temporal Capability Boundaries
 
 > **Paper Title:** *EventLapse: Where Do Frontier Video LLMs Break? Trace-Grounded Profiling of Temporal Capability Boundaries*
+> **AAAI 2027 Submission Code Package**
 
 EventLapse is a research framework for profiling and diagnosing the temporal reasoning capabilities of frontier Video-Language Models (VLMs) on **Event Counting** across **3 synthetic video domains** rendered with Manim Community Edition, using the **MORSE** executable trace evaluation methodology with Trace Precision / Recall / F1 scoring and operational capability boundary estimation.
 
-> 📖 **Detailed Experiments Guide:** See [EXPERIMENTS.md](file:///Users/sarvesh/Documents/VLM_failures/EventLapse/EXPERIMENTS.md) for full technical details on each of the 5 paper experiments.
+> 📖 **Detailed Experiments Guide:** See [EXPERIMENTS.md](EXPERIMENTS.md) for full technical details on each of the 5 paper experiments.
 
 ---
 
@@ -24,15 +25,15 @@ pip install -e .
 cp .env.example .env
 ```
 
-Set API keys for the providers you intend to use:
+Set API keys for the providers you intend to evaluate:
 
-| Provider | Environment Variable / Spec | Notes |
+| Provider | Environment Variable | Notes |
 | :--- | :--- | :--- |
 | Google Gemini | `GEMINI_API_KEY` | Native video supported |
-| OpenAI | `OPENAI_API_KEY` | Frame sequences only |
-| Anthropic | `ANTHROPIC_API_KEY` | Frame sequences only |
-| **PropensityBench Gateway** | `PROPENSITY_GATEWAY_URL`, `RATE_PM=60` | Model spec: `<provider>/<original_model_name>` |
-| **vLLM (open-source)** | `VLLM_BASE_URL` (no API key needed) | See §Open-Source Models via vLLM |
+| OpenAI | `OPENAI_API_KEY` | Frame sequences |
+| Anthropic | `ANTHROPIC_API_KEY` | Frame sequences |
+| PropensityBench Gateway | `PROPENSITY_GATEWAY_URL` | Multi-model evaluation gateway |
+| vLLM (open-source) | `VLLM_BASE_URL` | Local open-weight models |
 
 ---
 
@@ -44,96 +45,118 @@ Set API keys for the providers you intend to use:
 | **`blinking`** | Object light pulses/blinks | $N \in \{0, 1, 2, 3, 4, 5, 6, 8, 10, 12\}$ | $F \in \{0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0\}\text{ Hz}$ | 24.0 s |
 | **`state_machine`** | Visual state transitions $\{A, B, C, D\}$ | $N \in \{0, 1, 2, 3, 4, 5, 6, 8, 10, 12\}$ | $F \in \{0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0\}\text{ Hz}$ | 24.0 s |
 
-Videos are constant-duration per task ($24.0\text{s}$) to prevent total duration from being a confounding variable.
-
 ---
 
-## ⚡ Master Script: Run All 5 Experiments for Any Model
+## 🛠️ Step-by-Step Data Generation & Evaluation Workflow
 
-Run all 5 experiments sequentially for a model with a single command:
+### Step 1: Generate Synthetic Video Dataset & Ground-Truth Traces
 
-```bash
-# Run all 5 experiments for Google Gemini 2.0 Flash
-./scripts/run_all_experiments.sh google gemini-2.0-flash
-
-# Run all 5 experiments via PropensityBench Gateway
-./scripts/run_all_experiments.sh propensity gemini/gemini-3.1-pro-preview
-
-# Run all 5 experiments for local vLLM open-source model
-./scripts/run_all_experiments.sh vllm Qwen/Qwen2-VL-7B-Instruct
-```
-
----
-
-## 🧪 Step-by-Step Experiment Workflows
-
-### 1. Generate Synthetic Dataset ($N \times F$)
+To generate synthetic MP4 video files and exact executable ground-truth traces:
 
 ```bash
-# Quick test dataset (2 seeds per setting)
-python3 scripts/generate_dataset.py --num-seeds 2 --tasks all
-
-# Full benchmark dataset (20 seeds per setting)
+# Generate complete benchmark dataset (20 seeds per cell across all 3 domains)
 python3 scripts/generate_dataset.py --num-seeds 20 --tasks all
+
+# Quick sample generation for testing (2 seeds per cell)
+python3 scripts/generate_dataset.py --num-seeds 2 --tasks all
 ```
 
-Outputs are saved to:
+This populates:
 - `data/videos/{domain}/` — Rendered `.mp4` video files
 - `data/traces/{domain}/` — Ground-truth executable JSON traces
-- `data/gt/{domain}/` — Ground-truth answer files
+- `data/gt/{domain}/` — Ground-truth integer answer files
 - `data/manifest.jsonl` — Dataset index manifest
 
-### 2. Individual Experiment Commands
+---
+
+### Step 2: Run Benchmark Experiments
+
+Run all 5 paper experiments for any model using the master script or individual experiment execution commands:
 
 ```bash
-# Experiment 1: Full N x F Matrix Sweep
+# Option A: Master Script (Runs Exp 1–5 sequentially for Gemini 2.0 Flash)
+./scripts/run_all_experiments.sh google gemini-2.0-flash
+
+# Option B: Run Individual Experiments
+# Exp 1: Baseline N x F Matrix Sweep
 python3 scripts/run_matrix_sweep.py --provider google --model-name gemini-2.0-flash --input-mode native_video --prompt-condition structured_trace
 
-# Experiment 2: Frame Sampling Density Sweep (Native, 1, 2, 4, 8, 10, 16 FPS)
+# Exp 2: Frame Sampling Density Interventions (Native, 1, 2, 4, 8, 10, 16 FPS)
 for mode in native_video frames_1fps frames_2fps frames_4fps frames_8fps frames_10fps frames_16fps; do
   python3 scripts/run_matrix_sweep.py --provider google --model-name gemini-2.0-flash --input-mode ${mode} --prompt-condition structured_trace
 done
 
-# Experiment 3: Oracle Keyframe Evidence Sweep
+# Exp 3: Oracle Keyframe Evidence Interventions
 python3 scripts/run_matrix_sweep.py --provider google --model-name gemini-2.0-flash --input-mode oracle_evidence --prompt-condition structured_trace
 
-# Experiment 4: Prompting Strategy Sweep (5 conditions)
+# Exp 4: Prompting Strategy Interventions (5 conditions)
 for cond in direct structured_trace multi_turn_verification thinking role_prompting; do
   python3 scripts/run_matrix_sweep.py --provider google --model-name gemini-2.0-flash --input-mode native_video --prompt-condition ${cond}
 done
+```
 
-# Experiment 5: Aggregate Results & Generate 2D Heatmaps
-python3 scripts/aggregate_results.py
-python3 scripts/make_matrix_heatmaps.py
+Model prediction JSONL logs are stored in `outputs/`.
+
+---
+
+### Step 3: Compute Evaluation Metrics & Generate Paper Artifacts
+
+Compute Exact Match, Trace Precision, Recall, Trace $F_1$, Accidental Correctness Rate (ACR), and Reasoning Failure Rate (RFR):
+
+```bash
+# Evaluate metrics across raw outputs
+python3 scripts/evaluate_paper_metrics.py
+
+# Aggregate results and build paper heatmap figures & LaTeX tables
+python3 scripts/build_paper_figures_and_tables.py
+```
+
+Paper figures and tables are output to `figures/` and `outputs/paper/`.
+
+---
+
+### Step 4: Extract Qualitative Samples & Render Figure Panels
+
+To extract qualitative model traces, build the interactive HTML dashboard, and render 3–2 split PDF figure panels for appendix inclusion:
+
+```bash
+# 1. Sample 30 qualitative cases across the 6 taxonomy categories
+python3 scripts/qualitative/build_qualitative_dataset.py
+
+# 2. Build interactive HTML dashboard
+python3 scripts/qualitative/generate_qualitative_html.py
+
+# 3. Render page-optimized 3-2 split PDF figure panels
+python3 scripts/qualitative/render_split_qualitative_figures.py
 ```
 
 ---
 
-## 🖥️ Open-Source Models via vLLM
+## 🖥️ Evaluating Open-Source Models via vLLM
 
-Host any open-source Vision-Language Model using [vLLM](https://github.com/vllm-project/vllm)'s OpenAI-compatible API server:
+To evaluate local open-weight vision-language models:
 
 ```bash
-# 1. Launch vLLM server
+# 1. Launch local vLLM server
 vllm serve Qwen/Qwen2-VL-7B-Instruct --port 8000
 
-# 2. Run all 5 experiments against local vLLM
+# 2. Execute matrix sweep against local vLLM endpoint
 ./scripts/run_all_experiments.sh vllm Qwen/Qwen2-VL-7B-Instruct
 ```
 
 ---
 
-## 📏 Evaluation Metrics
+## 📏 Evaluation Metrics Reference
 
-| Metric | Description |
+| Metric | Definition & Formula |
 | :--- | :--- |
-| **Exact Match (EM)** | Binary exact string/numeric match of final predicted answer vs. ground truth |
-| **Trace Precision ($P$)** | Fraction of model-reported event steps matching ground-truth steps |
-| **Trace Recall ($R$)** | Fraction of true ground-truth events successfully detected by model |
-| **Trace F1 ($F_1$)** | Harmonic mean: $F_1 = \frac{2 \cdot P \cdot R}{P + R}$ |
-| **Accidental Correctness Rate (ACR)** | Correct final answer but corrupted/hallucinated trace ($F_1 < 1.0$) |
-| **Reasoning Failure Rate (RFR)** | Perfect trace ($F_1 = 1.0$) but wrong final answer |
-| **Operational Boundary ($x^*$)** | Max difficulty where lower 95% Wilson CI bound ≥ $\tau = 0.80$ |
+| **Exact Match (EM)** | Binary exact integer prediction vs. ground truth ($\hat{y} = N$) |
+| **Trace Precision ($P$)** | Fraction of model-reported timestamped steps matching ground-truth steps ($\frac{\text{TP}}{\text{TP} + \text{FP}}$) |
+| **Trace Recall ($R$)** | Fraction of true ground-truth event timestamps detected by model ($\frac{\text{TP}}{\text{TP} + \text{FN}}$) |
+| **Trace F1 ($F_1$)** | Harmonic mean of trace precision and recall ($\frac{2 \cdot P \cdot R}{P + R}$) |
+| **Accidental Correctness Rate (ACR)** | Correct integer answer ($\hat{y} = N$) with an ungrounded or corrupted trace ($F_1 < 1.0$) |
+| **Reasoning Failure Rate (RFR)** | Perfect intermediate trace ($F_1 = 1.0$) but incorrect final integer count |
+| **Operational Boundary ($x^*$)** | Maximum difficulty ($N$ or $F$) where 95% Wilson CI lower bound $\ge \tau = 0.80$ |
 
 ---
 
@@ -142,33 +165,35 @@ vllm serve Qwen/Qwen2-VL-7B-Instruct --port 8000
 ```
 EventLapse/
 ├── configs/               # Model, generation, task, and experiment YAML configs
-├── data/                  # Dataset outputs: videos/, traces/, gt/, manifest.jsonl
-├── sample_data/           # Single-seed sample dataset for evaluation testing
-├── scripts/
-│   ├── run_all_experiments.sh  # Master script to run all 5 experiments for a model
-│   ├── run_matrix_sweep.py     # N x F matrix sweep execution engine
-│   ├── generate_dataset.py     # Event Counting dataset generator
-│   ├── aggregate_results.py    # Consolidate results, token usage, and costs ($USD)
-│   └── make_matrix_heatmaps.py # 2D N x F matrix heatmap plotter
-├── src/eventlapse/
-│   ├── generation/        # Event Counting Manim generators (bounce_ball, blinking, state_machine)
-│   ├── models/            # Model dispatch and adapters (gemini, openai, anthropic, vllm, propensity)
-│   ├── inference/         # Prompts (5 strategies), runner, and response parser
-│   ├── interventions/     # Frame extraction (1–16 fps), oracle keyframe evidence, prompting controls
-│   ├── evaluation/        # Exact match, Trace F1, Wilson 95% CIs, operational boundaries, MORSE evaluator
+├── scripts/               # Master execution & evaluation scripts
+│   ├── run_all_experiments.sh # Master script to run all 5 experiments
+│   ├── run_matrix_sweep.py    # N x F matrix sweep execution engine
+│   ├── generate_dataset.py    # Manim Event Counting video dataset generator
+│   ├── evaluate_paper_metrics.py
+│   ├── build_paper_figures_and_tables.py
+│   └── qualitative/           # Qualitative dataset extraction & 3-2 split PDF renderer
+├── src/eventlapse/        # Core Python package
+│   ├── generation/        # Manim video generators (bounce_ball, blinking, state_machine)
+│   ├── models/            # VLM adapters (gemini, openai, anthropic, vllm, propensity)
+│   ├── inference/         # Prompts (5 strategies), runner, and response parsers
+│   ├── interventions/     # Temporal frame density, keyframe evidence, prompt controls
+│   ├── evaluation/        # Exact match, Trace F1, Wilson 95% CIs, MORSE evaluator
 │   └── utils/             # Logging, caching, seeds, paths, cost calculator
-└── tests/                 # Pytest unit test suite (14 tests)
+├── reference_code/        # Reference evaluation routines
+└── tests/                 # Pytest unit test suite (15/15 tests passing)
 ```
 
 ---
 
 ## 🧪 Unit Tests
 
+Run the unit test suite to verify pipeline integrity:
+
 ```bash
 PYTHONPATH=src pytest tests/
 ```
 
-All 14 tests pass cleanly.
+All 15 unit tests pass cleanly.
 
 ---
 
