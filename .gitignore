@@ -1,3 +1,7 @@
+# macOS & System Files
+.DS_Store
+*.DS_Store
+
 # Environment & Local files
 .env
 .env.local
