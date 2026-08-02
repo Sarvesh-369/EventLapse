@@ -1,10 +1,45 @@
+<div align="center">
+
 # The Low-Frequency Trap: Video–Language Models Fail at Simple Event Bookkeeping
 
-> **Paper Title:** *The Low-Frequency Trap: Video–Language Models Fail at Simple Event Bookkeeping*
+**Official PyTorch Implementation of The Low-Frequency Trap (EventLapse Benchmark)**
 
-A research framework for profiling and diagnosing the temporal reasoning capabilities of frontier Video-Language Models (VLMs) on **Event Counting** across **3 synthetic video domains** rendered with Manim Community Edition, using the **MORSE** executable trace evaluation methodology with Trace Precision / Recall / F1 scoring and operational capability boundary estimation.
+[Sarvesh Baskar](https://sarvesh-369.github.io/)*<sup>1</sup>, [Zikui Cai](https://zikuicai.github.io/)*<sup>1</sup>, [Shayan Shabihi](https://shayanshabihi.github.io/)*<sup>1</sup>, [Anirudh Satheesh](https://anirudhsatheesh.github.io/)<sup>1</sup>,  
+[Muhammad R. Islam](https://mrislam.github.io/)<sup>1</sup>, [Udari Madhushani Sewwog](https://udarim.github.io/)<sup>2</sup>, [Tom Goldstein](https://www.cs.umd.edu/~tomg/)<sup>1</sup>, [Furong Huang](https://furong-huang.com/)<sup>1</sup>
 
-> 📖 **Detailed Experiments Guide:** See [EXPERIMENTS.md](EXPERIMENTS.md) for full technical details on each of the 5 paper experiments.
+<sup>1</sup>*University of Maryland, College Park* &nbsp;&nbsp;|&nbsp;&nbsp; <sup>2</sup>*Scale AI*  
+*\* Equal contribution*
+
+<br>
+
+[![Project Page](https://img.shields.io/badge/project-page-38BDF8?style=for-the-badge&logo=googlechrome&logoColor=white)](https://the-low-frequency-trap.github.io)
+[![arXiv Paper](https://img.shields.io/badge/arxiv-paper-B31B1B?style=for-the-badge&logo=arxiv&logoColor=white)](https://the-low-frequency-trap.github.io)
+[![Dataset](https://img.shields.io/badge/%F0%9F%A4%97%20dataset-HuggingFace-FFD21E?style=for-the-badge)](https://the-low-frequency-trap.github.io)
+[![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
+
+<br>
+
+**[Quickstart](#-quickstart--installation) &nbsp;•&nbsp; [Visual Domains](#-event-counting-visual-domains) &nbsp;•&nbsp; [Evaluation Metrics](#-evaluation-metrics-reference) &nbsp;•&nbsp; [Experiments Guide](EXPERIMENTS.md)**
+
+<br>
+
+<img src="https://raw.githubusercontent.com/The-Low-Frequency-Trap/The-Low-Frequency-Trap.github.io/main/assets/images/hero_teaser.png" width="92%" alt="The Low-Frequency Trap Teaser Paradigm">
+
+</div>
+
+<br>
+
+> **The Low-Frequency Trap** evaluates Video-Language Models (VLMs) on event bookkeeping by controlling event count ($N$) and frequency ($F$). Rather than scoring final answers alone, EventLapse audits timestamped model traces against executable ground truth.
+
+---
+
+## 📌 Abstract
+
+Real-world video benchmarks provide broad coverage, but their fixed clips entangle event count, rate, duration, and visual complexity, making failure modes hard to isolate. While existing programmatic benchmarks offer better control, they primarily score only the final answer rather than auditing reported events against executable ground truth.
+
+To bridge this gap, we introduce **trace-grounded parametric profiling** for event counting in three controlled video tasks: bouncing-ball wall contacts, visual blinks, and categorical state transitions. Across **2,190 videos**, we systematically vary event count ($N$) and frequency ($F$) while holding rendering fixed. Each video includes an executable event trace for capability-surface estimation and timestamp-level evaluation.
+
+Our results reveal a staged temporal failure: at an 80% reliability threshold, Gemini 3.6 Flash and Qwen 3 VL 235B Instruct reliably count persistent state transitions up to 12 events at 0.5 and 1.0 Hz, yet demonstrate no reliable positive-count region for transient blinking events. In high-count, high-frequency regimes, only **0.2%** of final counts are correct and models recover just **18.1%** of true events. Extra frames inflate final scores without producing faithful event recovery.
 
 ---
 
@@ -13,8 +48,8 @@ A research framework for profiling and diagnosing the temporal reasoning capabil
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/Sarvesh-369/The_Low_Frequency_Trap.git
-cd The_Low_Frequency_Trap
+git clone https://github.com/The-Low-Frequency-Trap/The-Low-Frequency-Trap.git
+cd The-Low-Frequency-Trap
 pip install -e .
 ```
 
@@ -28,11 +63,11 @@ Set API keys for the providers you intend to evaluate:
 
 | Provider | Environment Variable | Notes |
 | :--- | :--- | :--- |
-| Google Gemini | `GEMINI_API_KEY` | Native video supported |
-| OpenAI | `OPENAI_API_KEY` | Frame sequences |
-| Anthropic | `ANTHROPIC_API_KEY` | Frame sequences |
-| PropensityBench Gateway | `PROPENSITY_GATEWAY_URL` | Multi-model evaluation gateway |
-| vLLM (open-source) | `VLLM_BASE_URL` | Local open-weight models |
+| **Google Gemini** | `GEMINI_API_KEY` | Native video supported |
+| **OpenAI** | `OPENAI_API_KEY` | Frame sequences |
+| **Anthropic** | `ANTHROPIC_API_KEY` | Frame sequences |
+| **PropensityBench Gateway** | `PROPENSITY_GATEWAY_URL` | Multi-model evaluation gateway |
+| **vLLM (open-source)** | `VLLM_BASE_URL` | Local open-weight models (e.g. Qwen 3 VL) |
 
 ---
 
@@ -76,3 +111,24 @@ Set API keys for the providers you intend to evaluate:
     ├── evaluation/        # Exact match, Trace F1, Wilson 95% CIs, MORSE evaluator
     └── utils/             # Logging, caching, seeds, paths, cost calculator
 ```
+
+---
+
+## 📄 Citation
+
+If you find our work or the EventLapse benchmark useful in your research, please cite:
+
+```bibtex
+@article{baskar2026lowfrequencytrap,
+  title={The Low-Frequency Trap: Video--Language Models Fail at Simple Event Bookkeeping},
+  author={Baskar, Sarvesh and Cai, Zikui and Shabihi, Shayan and Satheesh, Anirudh and Islam, Muhammad R. and Sewwog, Udari Madhushani and Goldstein, Tom and Huang, Furong},
+  journal={arXiv preprint},
+  year={2026}
+}
+```
+
+---
+
+## 📜 License
+
+This repository is licensed under the [MIT License](LICENSE).
