@@ -33,16 +33,6 @@
 
 ---
 
-## 📌 Abstract
-
-Real-world video benchmarks provide broad coverage, but their fixed clips entangle event count, rate, duration, and visual complexity, making failure modes hard to isolate. While existing programmatic benchmarks offer better control, they primarily score only the final answer rather than auditing reported events against executable ground truth.
-
-To bridge this gap, we introduce **trace-grounded parametric profiling** for event counting in three controlled video tasks: bouncing-ball wall contacts, visual blinks, and categorical state transitions. Across **2,190 videos**, we systematically vary event count ($N$) and frequency ($F$) while holding rendering fixed. Each video includes an executable event trace for capability-surface estimation and timestamp-level evaluation.
-
-Our results reveal a staged temporal failure: at an 80% reliability threshold, Gemini 3.6 Flash and Qwen 3 VL 235B Instruct reliably count persistent state transitions up to 12 events at 0.5 and 1.0 Hz, yet demonstrate no reliable positive-count region for transient blinking events. In high-count, high-frequency regimes, only **0.2%** of final counts are correct and models recover just **18.1%** of true events. Extra frames inflate final scores without producing faithful event recovery.
-
----
-
 ## 🚀 Quickstart & Installation
 
 ### 1. Clone & Install
