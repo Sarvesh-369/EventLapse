@@ -109,11 +109,14 @@ Set API keys for the providers you intend to evaluate:
 If you find our work useful in your research, please cite:
 
 ```bibtex
-@article{baskar2026lowfrequencytrap,
-  title={The Low-Frequency Trap: Video--Language Models Fail at Simple Event Bookkeeping},
-  author={Baskar, Sarvesh and Cai, Zikui and Shabihi, Shayan and Satheesh, Anirudh and Islam, Muhammad R. and Sewwog, Udari Madhushani and Goldstein, Tom and Huang, Furong},
-  journal={arXiv preprint arXiv:2608.06361},
-  year={2026}
+@misc{baskar2026lowfrequencytrapvideo,
+      title={The Low Frequency Trap: Video Language Models Fail at Simple Event Bookkeeping}, 
+      author={Sarvesh Baskar and Zikui Cai and Shayan Shabihi and Anirudh Satheesh and Muhammad R. Islam and Udari Madhushani Sehwag and Tom Goldstein and Furong Huang},
+      year={2026},
+      eprint={2608.06361},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2608.06361}, 
 }
 ```
 
