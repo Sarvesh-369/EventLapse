@@ -13,7 +13,7 @@
 <br>
 
 [![Project Page](https://img.shields.io/badge/project-page-38BDF8?style=for-the-badge&logo=googlechrome&logoColor=white)](https://low-frequency-trap.github.io)
-[![arXiv Paper](https://img.shields.io/badge/arxiv-paper-B31B1B?style=for-the-badge&logo=arxiv&logoColor=white)](https://low-frequency-trap.github.io)
+[![arXiv Paper](https://img.shields.io/badge/arxiv-paper-B31B1B?style=for-the-badge&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2608.06361)
 [![Dataset](https://img.shields.io/badge/%F0%9F%A4%97%20dataset-HuggingFace-FFD21E?style=for-the-badge)](https://huggingface.co/datasets/Sarvesh-369/Low-Frequency-Trap)
 [![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
 
@@ -112,7 +112,7 @@ If you find our work useful in your research, please cite:
 @article{baskar2026lowfrequencytrap,
   title={The Low-Frequency Trap: Video--Language Models Fail at Simple Event Bookkeeping},
   author={Baskar, Sarvesh and Cai, Zikui and Shabihi, Shayan and Satheesh, Anirudh and Islam, Muhammad R. and Sewwog, Udari Madhushani and Goldstein, Tom and Huang, Furong},
-  journal={arXiv preprint},
+  journal={arXiv preprint arXiv:2608.06361},
   year={2026}
 }
 ```
